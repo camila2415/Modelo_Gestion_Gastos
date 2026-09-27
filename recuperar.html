@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGG - Recuperar Contraseña</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <div class="header-tools">
+        <button id="btnTema" class="btn-theme">Modo Día / Noche</button>
+    </div>
+
+    <h1 class="titulo-principal">Sistema de Gestión de Gastos</h1>
+
+    <main class="login-card">
+        <h2>Recuperar Contraseña</h2>
+        
+        <form id="formRecuperar">
+            <div class="form-group">
+                <label for="recEmail">Correo electrónico registrado</label>
+                <input type="email" id="recEmail" placeholder="ejemplo@correo.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="nuevaPassword">Nueva Contraseña</label>
+                <input type="password" id="nuevaPassword" placeholder="••••••••" required>
+                <button type="button" id="verNuevaPassword" class="btn-eye">👁 Mostrar contraseña</button>
+            </div>
+
+            <div class="form-group">
+                <label for="repetirNuevaPassword">Repetir nueva contraseña</label>
+                <input type="password" id="repetirNuevaPassword" placeholder="••••••••" required>
+            </div>
+
+            <ul class="requisitos-lista">
+                <li id="longitud">❌ Mínimo 8 caracteres</li>
+                <li id="mayuscula">❌ Una letra mayúscula</li>
+                <li id="minuscula">❌ Una letra minúscula</li>
+                <li id="numero">❌ Un número</li>
+                <li id="especial">❌ Un símbolo especial</li>
+            </ul>
+
+            <button type="submit" id="btnCambiar" class="btn-ingresar" disabled>Cambiar Contraseña</button>
+        </form>
+
+        <div class="links-container">
+            <a href="index.html" class="link">Volver al inicio de sesión</a>
+        </div>
+    </main>
+
+    <script src="js/koo.js"></script>
+</body>
+</html>

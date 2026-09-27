@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGG - Iniciar Sesión</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <div class="header-tools">
+        <button id="btnTema" class="btn-theme">Modo Día / Noche</button>
+    </div>
+
+    <h1 class="titulo-principal">Sistema de Gestión de Gastos</h1>
+
+    <main class="login-card">
+        <h2>Iniciar Sesión</h2>
+        
+        <form id="formLogin">
+            <div class="form-group">
+                <label for="email">Correo electrónico</label>
+                <input type="email" id="email" placeholder="ejemplo@correo.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+                <button type="button" id="verPasswordLogin" class="btn-eye">👁 Mostrar contraseña</button>
+            </div>
+
+            <button type="submit" class="btn-ingresar">Ingresar</button>
+        </form>
+
+        <div class="links-container">
+            <a href="registro.html" class="link">Crear una cuenta</a>
+            <a href="recuperar.html" class="link">¿Olvidaste tu contraseña?</a>
+        </div>
+    </main>
+
+    <script src="js/koo.js"></script>
+</body>
+</html>

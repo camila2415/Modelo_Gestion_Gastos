@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGG - Registro de Usuario</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <div class="header-tools">
+        <button id="btnTema" class="btn-theme">Modo Día / Noche</button>
+    </div>
+
+    <h1 class="titulo-principal">Sistema de Gestión de Gastos</h1>
+
+    <main class="login-card">
+        <h2>Crear una Cuenta</h2>
+        
+        <form id="formRegistro">
+            <div class="form-group">
+                <label for="regEmail">Correo electrónico</label>
+                <input type="email" id="regEmail" placeholder="ejemplo@gmail.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="regFechaNac">Fecha de Nacimiento</label>
+                <input type="date" id="regFechaNac" required>
+            </div>
+
+            <div class="form-group">
+                <label for="passwordRegistro">Contraseña</label>
+                <input type="password" id="passwordRegistro" placeholder="••••••••" required>
+                <button type="button" id="verPasswordRegistro" class="btn-eye">👁 Mostrar contraseña</button>
+            </div>
+
+            <div class="form-group">
+                <label for="repetirPassword">Repetir contraseña</label>
+                <input type="password" id="repetirPassword" placeholder="••••••••" required>
+            </div>
+
+            <ul class="requisitos-lista">
+                <li id="reqDominioMail">❌ Dominio de correo válido (Gmail, Hotmail, Yahoo, Edu, etc.)</li>
+                <li id="reqEdad">❌ Ser mayor de 18 años</li>
+                <li id="longitud">❌ Mínimo 8 caracteres</li>
+                <li id="mayuscula">❌ Una letra mayúscula</li>
+                <li id="minuscula">❌ Una letra minúscula</li>
+                <li id="numero">❌ Un número</li>
+                <li id="especial">❌ Un símbolo especial</li>
+            </ul>
+
+            <button type="submit" id="btnRegistrar" class="btn-ingresar" disabled>Registrarse</button>
+        </form>
+
+        <div class="links-container">
+            <a href="index.html" class="link">¿Ya tenés cuenta? Iniciá sesión</a>
+        </div>
+    </main>
+
+    <script src="js/koo.js"></script>
+</body>
+</html>

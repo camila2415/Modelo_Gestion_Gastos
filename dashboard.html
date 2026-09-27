@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGG - Panel de Gastos</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <header class="navbar">
+        <span id="userEmail" class="link">usuario@correo.com</span>
+        <div class="user-controls">
+            <button id="btnTema" class="btn-theme">Modo Día / Noche</button>
+            <button id="btnCerrarSesion" class="btn-delete">Cerrar Sesión</button>
+        </div>
+    </header>
+
+    <h1 class="titulo-principal">Sistema de Gestión de Gastos</h1>
+
+    <main class="dashboard-container">
+        
+        <section class="summary-card">
+            <h3>Monto Total Gastado</h3>
+            <div id="montoTotal" class="monto-total">$0.00</div>
+        </section>
+
+        <section class="form-card">
+            <h3>Agregar Nuevo Gasto</h3>
+            <form id="formGasto">
+                <div class="form-group">
+                    <label for="montoGasto">Monto ($)</label>
+                    <input type="number" id="montoGasto" placeholder="Ej: 1500" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="categoriaGasto">Categoría</label>
+                    <select id="categoriaGasto" required>
+                        <option value="" disabled selected>Seleccioná una categoría</option>
+                        
+                        <option value="Comida">🍔 Comida / Supermercado</option>
+                        <option value="Transporte">🚌 Transporte / Nafta</option>
+                        <option value="Servicios">💡 Servicios (Luz, Agua, Gas, Internet)</option>
+                        <option value="Entretenimiento">🎬 Entretenimiento / Salidas</option>
+                        <option value="Salud">💊 Salud / Farmacia</option>
+                        <option value="Ropa">👕 Ropa / Calzado</option>
+                        <option value="Alquiler">🏠 Alquiler</option>
+                        <option value="Varios">📌 Varios</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="fechaGasto">Fecha</label>
+                    <input type="date" id="fechaGasto" required>
+                </div>
+
+                <button type="submit" class="btn-primary">Guardar Gasto</button>
+            </form>
+        </section>
+
+        <section class="table-card">
+            <h3>Historial de Gastos</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Monto</th>
+                        <th>Categoría</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaGastosBody">
+            </table>
+        </section>
+
+    </main>
+
+    <script src="js/koo.js"></script>
+</body>
+</html>
