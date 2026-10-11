@@ -1,13 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
     
+    // 1. Verificación de sesión activa (RF-01)
     const usuarioActivo = JSON.parse(localStorage.getItem('usuarioActivo'));
     if (!usuarioActivo) {
         window.location.href = 'index.html';
-        return;
+        return; 
     }
 
     document.getElementById('userEmailDisplay').textContent = usuarioActivo.email;
 
+    // 2. Captura de elementos del DOM
     const formGasto = document.getElementById('formGasto');
     const inputId = document.getElementById('gastoId');
     const inputMonto = document.getElementById('monto');
@@ -19,11 +21,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnLogout = document.getElementById('btnLogout');
     const btnTema = document.getElementById('btnTema');
     
+    // Elementos para el Modal de Confirmación (RF-08)
     const modalConfirmar = document.getElementById('modalConfirmar');
     const btnAceptarEliminar = document.getElementById('btnAceptarEliminar');
     const btnCancelarEliminar = document.getElementById('btnCancelarEliminar');
     let idParaEliminar = null;
 
+    // 3. Manejo de Tema Claro/Oscuro (RF-02)
     if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-mode');
     }
@@ -35,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 4. Cierre de sesión (Logout)
     if (btnLogout) {
         btnLogout.addEventListener('click', () => {
             localStorage.removeItem('usuarioActivo');
@@ -42,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 5. Funciones auxiliares para LocalStorage
     function obtenerGastos() {
         return JSON.parse(localStorage.getItem('gastos_sgg')) || [];
     }
@@ -50,9 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('gastos_sgg', JSON.stringify(gastos));
     }
 
+    // 6. Renderizado de Tabla e Historial con Filtro de Baja Lógica (RF-06 y RF-09)
     function renderizar() {
         const todosLosGastos = obtenerGastos();
         
+        // Filtrar por el usuario en sesión Y por estado_activo === true (Baja lógica)
         const gastosVisibles = todosLosGastos.filter(g => 
             g.email_usuario === usuarioActivo.email && g.estado_activo === true
         );
@@ -79,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         totalDisplay.textContent = totalAcumulado.toFixed(2);
     }
 
+    // 7. Evento Submit: Crear (RF-05) o Actualizar (RF-07)
     formGasto.addEventListener('submit', (e) => {
         e.preventDefault();
         const montoVal = parseFloat(inputMonto.value);
@@ -92,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const idActual = inputId.value;
 
         if (idActual) {
+            // Edición de un gasto existente
             const index = gastos.findIndex(g => g.id == idActual);
             if (index !== -1) {
                 gastos[index].monto = montoVal;
@@ -100,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gastos[index].descripcion = inputDescripcion.value;
             }
         } else {
+            // Creación de un nuevo gasto con objeto completo
             const nuevoGasto = {
                 id: Date.now(),
                 email_usuario: usuarioActivo.email,
@@ -119,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderizar();
     });
 
+    // 8. Cargar datos en el formulario para editar (RF-07)
     window.prepararEdicion = function(id) {
         const gastos = obtenerGastos();
         const gasto = gastos.find(g => g.id == id);
@@ -132,23 +144,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // 9. Solicitar eliminación abriendo el modal (RF-08)
     window.solicitarEliminacion = function(id) {
         idParaEliminar = id;
         modalConfirmar.style.display = 'block';
     };
 
+    // Botón Cancelar en el modal
     btnCancelarEliminar.addEventListener('click', () => {
         idParaEliminar = null;
         modalConfirmar.style.display = 'none';
     });
 
+    // Botón Aceptar en el modal (Aplica la Baja Lógica cambiando estado_activo)
     btnAceptarEliminar.addEventListener('click', () => {
         if (idParaEliminar) {
             const gastos = obtenerGastos();
             const index = gastos.findIndex(g => g.id == idParaEliminar);
             if (index !== -1) {
-
-                gastos[index].estado_activo = false;
+                gastos[index].estado_activo = false; // Baja lógica
                 guardarGastos(gastos);
             }
         }
@@ -157,5 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderizar();
     });
 
+    // Carga inicial al entrar a la página
     renderizar();
 });
