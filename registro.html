@@ -1,26 +1,31 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGG - Registro de Usuario</title>
+    <title>SGG - Reclutamiento de Piratas 🏴‍☠️</title>
+    <link rel="icon" type="image/png" href="assets/img/favicon.png">
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="one-piece-theme auth-page">
 
     <div class="header-tools">
-        <button id="btnTema" class="btn-theme">Modo Día / Noche</button>
+        <button id="btnTema" class="btn-theme">☀️ Modo Sol / Noche 🌙</button>
     </div>
 
-    <h1 class="titulo-principal">Sistema de Gestión de Gastos</h1>
+    <div class="brand-header" style="text-align: center; margin-bottom: 20px;">
+        <img src="assets/img/logo-jolly-roger.png" alt="Jolly Roger" class="auth-logo" onerror="this.style.display='none'">
+        <h1 class="titulo-principal" style="text-align: center; margin-bottom: 5px;">🏴‍☠️ Tesorería del Grand Line</h1>
+        <p class="subtitulo-pirata" style="text-align: center; margin: 0 auto; display: block;">Únete a la Tripulación y Gestiona tu Botín</p>
+    </div>
 
     <main class="login-card">
-        <h2>Crear una Cuenta</h2>
+        <h2>📜 Formulario de Reclutamiento</h2>
         
         <form id="formRegistro">
             <div class="form-group">
-                <label for="regEmail">Correo electrónico</label>
-                <input type="email" id="regEmail" placeholder="ejemplo@gmail.com" required>
+                <label for="regEmail">Correo Electrónico</label>
+                <input type="email" id="regEmail" placeholder="usuario@correo.com" required>
             </div>
 
             <div class="form-group">
@@ -29,13 +34,13 @@
             </div>
 
             <div class="form-group">
-                <label for="passwordRegistro">Contraseña</label>
+                <label for="passwordRegistro">Clave del Cofre del Tesoro</label>
                 <input type="password" id="passwordRegistro" placeholder="••••••••" required>
                 <button type="button" id="verPasswordRegistro" class="btn-eye">👁 Mostrar contraseña</button>
             </div>
 
             <div class="form-group">
-                <label for="repetirPassword">Repetir contraseña</label>
+                <label for="repetirPassword">Repetir Clave</label>
                 <input type="password" id="repetirPassword" placeholder="••••••••" required>
             </div>
 
@@ -49,11 +54,11 @@
                 <li id="especial">❌ Un símbolo especial</li>
             </ul>
 
-            <button type="submit" id="btnRegistrar" class="btn-ingresar" disabled>Registrarse</button>
+            <button type="submit" id="btnRegistrar" class="btn-ingresar" disabled>⚔️ Registrarse en la Tripulación</button>
         </form>
 
         <div class="links-container">
-            <a href="index.html" class="link">¿Ya tenés cuenta? Iniciá sesión</a>
+            <a href="index.html" class="link">⚓ ¿Ya eres de la tripulación? Inicia sesión</a>
         </div>
     </main>
 

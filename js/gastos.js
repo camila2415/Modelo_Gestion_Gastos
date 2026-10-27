@@ -1,176 +1,271 @@
-document.addEventListener('DOMContentLoaded', () => {
+/* ==========================================================================
+   MÓDULO DE GASTOS CON PERSISTENCIA OBLIGATORIA EN SQLITE + OPFS
+   ========================================================================== */
+
+document.addEventListener('DOMContentLoaded', async () => {
     
-    // 1. Verificación de sesión activa (RF-01)
-    const usuarioActivo = JSON.parse(localStorage.getItem('usuarioActivo'));
-    if (!usuarioActivo) {
-        window.location.href = 'index.html';
-        return; 
-    }
-
-    document.getElementById('userEmailDisplay').textContent = usuarioActivo.email;
-
-    // 2. Captura de elementos del DOM
-    const formGasto = document.getElementById('formGasto');
-    const inputId = document.getElementById('gastoId');
-    const inputMonto = document.getElementById('monto');
-    const inputFecha = document.getElementById('fecha');
-    const selectCategoria = document.getElementById('categoria');
-    const inputDescripcion = document.getElementById('descripcion');
-    const tablaBody = document.getElementById('tablaGastosBody');
-    const totalDisplay = document.getElementById('totalGastado');
-    const btnLogout = document.getElementById('btnLogout');
+    // ----------------------------------------------------------------------
+    // 1. CONTROL DE TEMA (MODO SOL / NOCHE)
+    // ----------------------------------------------------------------------
     const btnTema = document.getElementById('btnTema');
-    
-    // Elementos para el Modal de Confirmación (RF-08)
-    const modalConfirmar = document.getElementById('modalConfirmar');
-    const btnAceptarEliminar = document.getElementById('btnAceptarEliminar');
-    const btnCancelarEliminar = document.getElementById('btnCancelarEliminar');
-    let idParaEliminar = null;
+    const temaGuardado = localStorage.getItem('sgg_tema');
 
-    // 3. Manejo de Tema Claro/Oscuro (RF-02)
-    if (localStorage.getItem('theme') === 'dark') {
+    if (temaGuardado === 'dark') {
         document.body.classList.add('dark-mode');
     }
+
     if (btnTema) {
         btnTema.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
             const esOscuro = document.body.classList.contains('dark-mode');
-            localStorage.setItem('theme', esOscuro ? 'dark' : 'light');
+            localStorage.setItem('sgg_tema', esOscuro ? 'dark' : 'light');
         });
     }
 
-    // 4. Cierre de sesión (Logout)
-    if (btnLogout) {
-        btnLogout.addEventListener('click', () => {
-            localStorage.removeItem('usuarioActivo');
-            window.location.href = 'index.html';
+    // ----------------------------------------------------------------------
+    // 2. CONTROL DE SESIÓN
+    // ----------------------------------------------------------------------
+    const btnCerrarSesion = document.getElementById('btnCerrarSesion');
+    if (btnCerrarSesion) {
+        btnCerrarSesion.addEventListener('click', () => {
+            if (confirm('¿Estás seguro de que deseas desembarcar del puerto?')) {
+                window.location.href = 'index.html';
+            }
         });
     }
 
-    // 5. Funciones auxiliares para LocalStorage
-    function obtenerGastos() {
-        return JSON.parse(localStorage.getItem('gastos_sgg')) || [];
+    // ----------------------------------------------------------------------
+    // 3. MOTOR SQLITE + OPFS (REQUISITO OBLIGATORIO)
+    // ----------------------------------------------------------------------
+    let db = null;
+    let transacciones = [];
+    const DB_NAME = 'gastos.sqlite';
+
+    // Inicialización del motor SQLite con WebAssembly y almacenamiento OPFS
+    async function initSQLite() {
+        try {
+            const SQL = await initSqlJs({
+                locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+            });
+
+            // Acceso directo al disco con Origin Private File System (OPFS)
+            const opfsRoot = await navigator.storage.getDirectory();
+            let arrayBuffer = null;
+
+            try {
+                const fileHandle = await opfsRoot.getFileHandle(DB_NAME);
+                const file = await fileHandle.getFile();
+                arrayBuffer = await file.arrayBuffer();
+                db = new SQL.Database(new Uint8Array(arrayBuffer));
+            } catch (e) {
+                // Si el archivo .sqlite no existe aún en OPFS, creamos la BD vacía
+                db = new SQL.Database();
+            }
+
+            // Crear tabla con consulta SQL estándar
+            db.run(`
+                CREATE TABLE IF NOT EXISTS transacciones (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fecha TEXT NOT NULL,
+                    descripcion TEXT NOT NULL,
+                    monto REAL NOT NULL,
+                    tipo TEXT NOT NULL,
+                    categoria TEXT NOT NULL,
+                    comprobante TEXT
+                );
+            `);
+
+            await guardarEnOPFS();
+            await cargarTransaccionesSQL();
+        } catch (err) {
+            console.error("Error al iniciar SQLite en OPFS:", err);
+        }
     }
 
-    function guardarGastos(gastos) {
-        localStorage.setItem('gastos_sgg', JSON.stringify(gastos));
+    // Guardar el binario .sqlite físicamente en disco (OPFS)
+    async function guardarEnOPFS() {
+        if (!db) return;
+        const binaryData = db.export();
+        const opfsRoot = await navigator.storage.getDirectory();
+        const fileHandle = await opfsRoot.getFileHandle(DB_NAME, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(binaryData);
+        await writable.close();
     }
 
-    // 6. Renderizado de Tabla e Historial con Filtro de Baja Lógica (RF-06 y RF-09)
-    function renderizar() {
-        const todosLosGastos = obtenerGastos();
-        
-        // Filtrar por el usuario en sesión Y por estado_activo === true (Baja lógica)
-        const gastosVisibles = todosLosGastos.filter(g => 
-            g.email_usuario === usuarioActivo.email && g.estado_activo === true
+    // CONSULTA SQL SELECT: Leer registros de la base de datos
+    async function cargarTransaccionesSQL() {
+        const stmt = db.prepare("SELECT * FROM transacciones ORDER BY id DESC");
+        transacciones = [];
+
+        while (stmt.step()) {
+            transacciones.push(stmt.getAsObject());
+        }
+        stmt.free();
+        renderizarInterfaz();
+    }
+
+    // CONSULTA SQL INSERT: Agregar registro
+    async function guardarTransaccionSQL(descripcion, monto, tipo, categoria, comprobanteUrl) {
+        const fecha = new Date().toLocaleDateString('es-AR');
+
+        db.run(
+            `INSERT INTO transacciones (fecha, descripcion, monto, tipo, categoria, comprobante) 
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [fecha, descripcion, monto, tipo, categoria, comprobanteUrl]
         );
 
-        tablaBody.innerHTML = '';
-        let totalAcumulado = 0;
-
-        gastosVisibles.forEach(gasto => {
-            totalAcumulado += parseFloat(gasto.monto);
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${gasto.fecha}</td>
-                <td>${gasto.categoria}</td>
-                <td>${gasto.descripcion}</td>
-                <td>$${parseFloat(gasto.monto).toFixed(2)}</td>
-                <td>
-                    <button class="btn-edit" onclick="prepararEdicion(${gasto.id})">Editar</button>
-                    <button class="btn-delete" onclick="solicitarEliminacion(${gasto.id})">Eliminar</button>
-                </td>
-            `;
-            tablaBody.appendChild(tr);
-        });
-
-        totalDisplay.textContent = totalAcumulado.toFixed(2);
+        await guardarEnOPFS();
+        await cargarTransaccionesSQL();
     }
 
-    // 7. Evento Submit: Crear (RF-05) o Actualizar (RF-07)
-    formGasto.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const montoVal = parseFloat(inputMonto.value);
+    // CONSULTA SQL DELETE: Eliminar registro por ID
+    window.eliminarTransaccionSQL = async function(id) {
+        if (confirm('¿Deseas borrar esta anotación de la bitácora?')) {
+            db.run("DELETE FROM transacciones WHERE id = ?", [id]);
+            await guardarEnOPFS();
+            await cargarTransaccionesSQL();
+        }
+    };
 
-        if (montoVal <= 0 || isNaN(montoVal)) {
-            alert('El monto debe ser un número mayor a cero.');
-            return;
+    // ----------------------------------------------------------------------
+    // 4. GRÁFICOS (Chart.js)
+    // ----------------------------------------------------------------------
+    let chartCategoriasInstance = null;
+    let chartBalanceInstance = null;
+
+    function inicializarGraficos() {
+        const ctxCat = document.getElementById('chartCategorias');
+        const ctxBal = document.getElementById('chartBalance');
+
+        if (!ctxCat || !ctxBal) return;
+
+        chartCategoriasInstance = new Chart(ctxCat, {
+            type: 'doughnut',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'],
+                    borderWidth: 2
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        chartBalanceInstance = new Chart(ctxBal, {
+            type: 'bar',
+            data: {
+                labels: ['Ingresos (Botín)', 'Gastos'],
+                datasets: [{
+                    label: 'Monto Total ($)',
+                    data: [0, 0],
+                    backgroundColor: ['#10b981', '#ef4444'],
+                    borderRadius: 6
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    // ----------------------------------------------------------------------
+    // 5. INTERFAZ DE USUARIO Y TABLA
+    // ----------------------------------------------------------------------
+    function renderizarInterfaz() {
+        const tablaCuerpo = document.getElementById('tablaGastosCuerpo');
+        const montoTotalEl = document.getElementById('montoTotal');
+
+        if (!tablaCuerpo) return;
+        tablaCuerpo.innerHTML = '';
+
+        let totalIngresos = 0;
+        let totalGastos = 0;
+        const totalPorCategoria = {};
+
+        transacciones.forEach((item) => {
+            const monto = parseFloat(item.monto);
+
+            if (item.tipo === 'ingreso') {
+                totalIngresos += monto;
+            } else {
+                totalGastos += monto;
+                totalPorCategoria[item.categoria] = (totalPorCategoria[item.categoria] || 0) + monto;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.fecha}</td>
+                <td><strong>${item.descripcion}</strong></td>
+                <td><span class="badge-cat">${item.categoria}</span></td>
+                <td style="color: ${item.tipo === 'ingreso' ? '#10b981' : '#ef4444'}; font-weight: bold;">
+                    ${item.tipo === 'ingreso' ? '+' : '-'}$${monto.toFixed(2)}
+                </td>
+                <td>
+                    ${item.comprobante 
+                        ? `<a href="${item.comprobante}" target="_blank" class="link">📎 Ver File</a>` 
+                        : '<span style="color: #94a3b8;">Sin adjunto</span>'}
+                </td>
+                <td>
+                    <button class="btn-danger btn-sm" onclick="eliminarTransaccionSQL(${item.id})">🗑️ Borrar</button>
+                </td>
+            `;
+            tablaCuerpo.appendChild(tr);
+        });
+
+        const balanceTotal = totalIngresos - totalGastos;
+        if (montoTotalEl) {
+            montoTotalEl.textContent = `$${balanceTotal.toFixed(2)}`;
+            montoTotalEl.style.color = balanceTotal >= 0 ? '#10b981' : '#ef4444';
         }
 
-        const gastos = obtenerGastos();
-        const idActual = inputId.value;
+        if (chartCategoriasInstance && chartBalanceInstance) {
+            chartCategoriasInstance.data.labels = Object.keys(totalPorCategoria);
+            chartCategoriasInstance.data.datasets[0].data = Object.values(totalPorCategoria);
+            chartCategoriasInstance.update();
 
-        if (idActual) {
-            // Edición de un gasto existente
-            const index = gastos.findIndex(g => g.id == idActual);
-            if (index !== -1) {
-                gastos[index].monto = montoVal;
-                gastos[index].fecha = inputFecha.value;
-                gastos[index].categoria = selectCategoria.value;
-                gastos[index].descripcion = inputDescripcion.value;
+            chartBalanceInstance.data.datasets[0].data = [totalIngresos, totalGastos];
+            chartBalanceInstance.update();
+        }
+    }
+
+    // ----------------------------------------------------------------------
+    // 6. FORMULARIO
+    // ----------------------------------------------------------------------
+    const formGasto = document.getElementById('formGasto');
+
+    if (formGasto) {
+        formGasto.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const descripcion = document.getElementById('descripcion').value.trim();
+            const monto = parseFloat(document.getElementById('monto').value);
+            const tipo = document.getElementById('tipo').value;
+            const categoria = document.getElementById('categoria').value;
+            const comprobanteInput = document.getElementById('comprobante');
+
+            if (!descripcion || isNaN(monto) || !categoria) {
+                alert('Por favor, completa todos los campos requeridos.');
+                return;
             }
-        } else {
-            // Creación de un nuevo gasto con objeto completo
-            const nuevoGasto = {
-                id: Date.now(),
-                email_usuario: usuarioActivo.email,
-                monto: montoVal,
-                fecha: inputFecha.value,
-                categoria: selectCategoria.value,
-                descripcion: inputDescripcion.value,
-                estado_activo: true 
+
+            const procesarFormulario = async (comprobanteUrl = null) => {
+                await guardarTransaccionSQL(descripcion, monto, tipo, categoria, comprobanteUrl);
+                formGasto.reset();
             };
-            gastos.push(nuevoGasto);
-        }
 
-        guardarGastos(gastos);
-        formGasto.reset();
-        inputId.value = '';
-        document.getElementById('btnGuardar').textContent = 'Guardar Gasto';
-        renderizar();
-    });
-
-    // 8. Cargar datos en el formulario para editar (RF-07)
-    window.prepararEdicion = function(id) {
-        const gastos = obtenerGastos();
-        const gasto = gastos.find(g => g.id == id);
-        if (gasto) {
-            inputId.value = gasto.id;
-            inputMonto.value = gasto.monto;
-            inputFecha.value = gasto.fecha;
-            selectCategoria.value = gasto.categoria;
-            inputDescripcion.value = gasto.descripcion;
-            document.getElementById('btnGuardar').textContent = 'Actualizar Gasto';
-        }
-    };
-
-    // 9. Solicitar eliminación abriendo el modal (RF-08)
-    window.solicitarEliminacion = function(id) {
-        idParaEliminar = id;
-        modalConfirmar.style.display = 'block';
-    };
-
-    // Botón Cancelar en el modal
-    btnCancelarEliminar.addEventListener('click', () => {
-        idParaEliminar = null;
-        modalConfirmar.style.display = 'none';
-    });
-
-    // Botón Aceptar en el modal (Aplica la Baja Lógica cambiando estado_activo)
-    btnAceptarEliminar.addEventListener('click', () => {
-        if (idParaEliminar) {
-            const gastos = obtenerGastos();
-            const index = gastos.findIndex(g => g.id == idParaEliminar);
-            if (index !== -1) {
-                gastos[index].estado_activo = false; // Baja lógica
-                guardarGastos(gastos);
+            if (comprobanteInput && comprobanteInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = async function (event) {
+                    await procesarFormulario(event.target.result);
+                };
+                reader.readAsDataURL(comprobanteInput.files[0]);
+            } else {
+                await procesarFormulario();
             }
-        }
-        idParaEliminar = null;
-        modalConfirmar.style.display = 'none';
-        renderizar();
-    });
+        });
+    }
 
-    // Carga inicial al entrar a la página
-    renderizar();
+    // Inicializar SQLite y Gráficos
+    inicializarGraficos();
+    await initSQLite();
 });

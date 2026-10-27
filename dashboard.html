@@ -3,35 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGG - Panel de Gastos</title>
+    <title>SGG - Tesorería del Grand Line 🏴‍☠️</title>
+    <link rel="icon" type="image/png" href="assets/img/favicon.png">
     <link rel="stylesheet" href="css/styles.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
+<body class="one-piece-theme">
 
     <header class="navbar">
-        <span id="userEmailDisplay" class="link">usuario@correo.com</span>
+        <div class="brand">
+            <img src="assets/img/logo-jolly-roger.png" alt="Jolly Roger" class="nav-logo" onerror="this.style.display='none'">
+            <h2>Grand Line Expenses</h2>
+        </div>
+        <span id="userEmailDisplay" class="link">pirata@grandline.com</span>
         <div class="user-controls">
-            <button id="btnTema" class="btn-theme">Modo Día / Noche</button>
+            <button id="btnTema" class="btn-theme">Modo Sol / Noche</button>
             <button id="btnLogout" class="btn-delete">Cerrar Sesión</button>
         </div>
     </header>
 
-    <h1 class="titulo-principal">Sistema de Gestión de Gastos</h1>
+    <h1 class="titulo-principal">🏴‍☠️ Bitácora y Tesorería de la Tripulación</h1>
 
     <main class="dashboard-container">
         
         <section class="summary-card">
-            <h3>Monto Total Gastado</h3>
+            <h3>💰 Botín Acumulado (Balance General)</h3>
             <div class="monto-total">$<span id="totalGastado">0.00</span></div>
         </section>
 
         <section class="form-card">
-            <h3>Agregar / Editar Gasto</h3>
+            <h3>📝 Registrar Movimiento en el Libro de Bordo</h3>
             <form id="formGasto">
                 <input type="hidden" id="gastoId">
 
                 <div class="form-group">
-                    <label for="monto">Monto ($)</label>
+                    <label for="tipoMovimiento">Tipo de Movimiento</label>
+                    <select id="tipoMovimiento" required>
+                        <option value="egreso" selected>🔴 Egreso (Gasto de la Tripulación)</option>
+                        <option value="ingreso">🟢 Ingreso (Tesoro / Botín)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="monto">Monto (Bellys / $)</label>
                     <input type="number" id="monto" placeholder="Ej: 1500" step="0.01" required>
                 </div>
 
@@ -39,13 +54,12 @@
                     <label for="categoria">Categoría</label>
                     <select id="categoria" required>
                         <option value="" disabled selected>Seleccioná una categoría</option>
-                        <option value="Comida">🍔 Comida / Supermercado</option>
-                        <option value="Transporte">🚌 Transporte / Nafta</option>
-                        <option value="Servicios">💡 Servicios (Luz, Agua, Gas, Internet)</option>
-                        <option value="Entretenimiento">🎬 Entretenimiento / Salidas</option>
-                        <option value="Salud">💊 Salud / Farmacia</option>
-                        <option value="Ropa">👕 Ropa / Calzado</option>
-                        <option value="Alquiler">🏠 Alquiler</option>
+                        <option value="Comida">🍖 Comida</option>
+                        <option value="Navegación">⚓ Ahorro / Fondo para Imprevistos</option>
+                        <option value="Medicina">💊 Suministros Médicos </option>
+                        <option value="Entretenimiento">🎵 Salidas</option>
+                        <option value="Mapas">📚 Facultad y Cursos</option>
+                        <option value="Tesoro">💎 Botín / Salarios</option>
                         <option value="Varios">📌 Varios</option>
                     </select>
                 </div>
@@ -57,22 +71,40 @@
 
                 <div class="form-group">
                     <label for="descripcion">Descripción</label>
-                    <input type="text" id="descripcion" placeholder="Ej: Compra mensual del súper" required>
+                    <input type="text" id="descripcion" placeholder="Ej: Banquete en Water 7" required>
                 </div>
 
-                <button type="submit" id="btnGuardar" class="btn-primary">Guardar Gasto</button>
+                <div class="form-group">
+                    <label for="comprobanteFile">Comprobante / Ticket (Opcional)</label>
+                    <input type="file" id="comprobanteFile" accept="image/*">
+                </div>
+
+                <button type="submit" id="btnGuardar" class="btn-primary">Guardar en la Bitácora</button>
             </form>
         </section>
 
+        <section class="charts-section">
+            <div class="chart-card">
+                <h3>📊 Distribución de Egresos por Categoría</h3>
+                <canvas id="chartDona"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>⚖️ Comparativa: Ingresos vs. Egresos</h3>
+                <canvas id="chartBarras"></canvas>
+            </div>
+        </section>
+
         <section class="table-card">
-            <h3>Historial de Gastos</h3>
+            <h3>📜 Historial del Cofre del Tesoro</h3>
             <table class="data-table">
                 <thead>
                     <tr>
                         <th>Fecha</th>
+                        <th>Tipo</th>
                         <th>Categoría</th>
                         <th>Descripción</th>
                         <th>Monto</th>
+                        <th>Comprobante</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -82,17 +114,19 @@
         </section>
 
     </main>
+
     <div id="modalConfirmar" class="modal" style="display: none;">
         <div class="modal-content">
-            <h3>¿Confirmar eliminación?</h3>
-            <p>¿Está seguro de que desea eliminar este registro de gasto?</p>
+            <h3>🏴‍☠️ ¿Confirmar la eliminación?</h3>
+            <p>El registro será desactivado del historial activo pero conservado en la base de datos.</p>
             <div class="modal-buttons">
-                <button id="btnAceptarEliminar" class="btn-danger">Aceptar</button>
+                <button id="btnAceptarEliminar" class="btn-danger">Arrojar al mar (Eliminar)</button>
                 <button id="btnCancelarEliminar" class="btn-secondary">Cancelar</button>
             </div>
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <script src="js/gastos.js"></script>
 </body>
 </html>
