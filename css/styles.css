@@ -1,20 +1,18 @@
 :root {
-  /* Océano y Cielo del Grand Line */
+
   --ocean-blue-dark: #0a192f;
   --ocean-blue-main: #172a45;
   --ocean-blue-light: #203a43;
   --sky-blue: #4a90e2;
   --sea-foam: #e0f2fe;
 
-  /* Sombrero de Paja & Luffy */
-  --luffy-yellow: #f59e0b;       /* Amarillo Sombrero de Paja */
+  --luffy-yellow: #f59e0b;     
   --luffy-yellow-hover: #d97706;
-  --luffy-red: #dc2626;          /* Rojo Chaleco */
-  --cyan-marine: #38bdf8;        /* Celeste Marino */
+  --luffy-red: #dc2626;        
+  --cyan-marine: #38bdf8;       
   --cyan-marine-hover: #0284c7;
 
-  /* Tarjetas y Contenedores */
-  --scroll-paper: rgba(255, 253, 247, 0.92); /* Pergamino semitransparente */
+  --scroll-paper: rgba(255, 253, 247, 0.92); 
   --card-border: #d97706;
   --text-dark: #1e293b;
   --text-muted: #64748b;
@@ -23,7 +21,6 @@
   --shadow-ocean: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
-/* Modo Noche Profunda */
 body.dark-mode {
   --scroll-paper: rgba(15, 23, 42, 0.92);
   --text-dark: #f8fafc;
@@ -31,9 +28,6 @@ body.dark-mode {
   --card-border: #f59e0b;
 }
 
-/* ==========================================================================
-   ESTILOS BASE CON FONDO DE MAR Y BARCO
-   ========================================================================== */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -44,7 +38,6 @@ body.dark-mode {
 body.one-piece-theme {
   min-height: 100vh;
   color: var(--text-dark);
-  /* Imagen del Going Merry con capas de color de mar */
   background: 
     linear-gradient(rgba(10, 25, 47, 0.55), rgba(32, 58, 67, 0.75)),
     url('../assets/img/going-merry.jpg') no-repeat center center fixed;
@@ -107,9 +100,6 @@ body.dark-mode {
   text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8);
 }
 
-/* ==========================================================================
-   BOTONES ESTILO SOMBRERO DE PAJA Y CELESTE MARINO
-   ========================================================================== */
 button {
   cursor: pointer;
   border: none;
@@ -120,7 +110,6 @@ button {
   transition: all 0.25s ease;
 }
 
-/* Botón Principal (Amarillo Sombrero de Paja) */
 .btn-ingresar, .btn-primary {
   background: linear-gradient(135deg, #fbbf24, var(--luffy-yellow));
   color: #78350f;
@@ -136,7 +125,6 @@ button {
   color: #451a03;
 }
 
-/* Botón Celeste Marino */
 .btn-theme {
   background-color: var(--cyan-marine);
   color: #0c4a6e;
@@ -147,7 +135,6 @@ button {
   color: #ffffff;
 }
 
-/* Botones Peligro y Secundario */
 .btn-delete, .btn-danger {
   background-color: var(--luffy-red);
   color: #ffffff;
@@ -170,9 +157,6 @@ button {
   text-decoration: underline;
 }
 
-/* ==========================================================================
-   TARJETAS Y CONTENEDORES (AUTENTICACIÓN Y DASHBOARD)
-   ========================================================================== */
 .auth-page {
   display: flex;
   flex-direction: column;
@@ -211,9 +195,6 @@ button {
   font-size: 1.4rem;
 }
 
-/* ==========================================================================
-   CAMPOS DE ENTRADA (INPUTS CELESTES)
-   ========================================================================== */
 .form-group {
   margin-bottom: 18px;
   display: flex;
@@ -244,9 +225,6 @@ button {
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3);
 }
 
-/* ==========================================================================
-   ENLACES Y REQUISITOS
-   ========================================================================== */
 .links-container {
   margin-top: 22px;
   display: flex;
@@ -284,9 +262,6 @@ button {
   font-weight: 600;
 }
 
-/* ==========================================================================
-   DASHBOARD Y TABLAS
-   ========================================================================== */
 .dashboard-container {
   max-width: 1100px;
   margin: 20px auto 0 auto;
@@ -330,7 +305,6 @@ button {
   background-color: rgba(56, 189, 248, 0.15);
 }
 
-/* Modales */
 .modal {
   position: fixed;
   top: 0;
@@ -354,41 +328,32 @@ button {
   text-align: center;
 }
 
-/* ==========================================================================
-   MEJORA DE CAJAS DE TEXTO Y SELECTS EN MODO NOCHE
-   ========================================================================== */
 body.dark-mode input[type="text"],
 body.dark-mode input[type="email"],
 body.dark-mode input[type="password"],
 body.dark-mode input[type="number"],
 body.dark-mode input[type="file"],
 body.dark-mode select {
-  background-color: #0f172a;    /* Fondo oscuro (casi negro) */
-  color: #f8fafc;               /* Texto del usuario en blanco brillante */
-  border: 1px solid var(--luffy-yellow); /* Borde dorado para mantener el estilo */
+  background-color: #0f172a;
+  color: #f8fafc;        
+  border: 1px solid var(--luffy-yellow); 
 }
 
-/* Cambia el color del texto de la opción seleccionada dentro del desplegable */
 body.dark-mode select option {
   background-color: #0f172a;
   color: #f8fafc;
 }
 
-/* Cambia el color del texto de ayuda (placeholder) */
 body.dark-mode input::placeholder {
   color: #94a3b8;
 }
 
-/* Resalte iluminado al hacer clic o foco en la caja */
 body.dark-mode input:focus,
 body.dark-mode select:focus {
   outline: none;
   border-color: #fbbf24;
   box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
 }
-/* ==========================================================================
-   MEJORA DE CAJAS DE TEXTO, SELECTS Y FECHAS EN MODO NOCHE
-   ========================================================================== */
 body.dark-mode input[type="text"],
 body.dark-mode input[type="email"],
 body.dark-mode input[type="password"],
@@ -403,4 +368,69 @@ body.dark-mode select {
 body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
   cursor: pointer;
+}
+
+body.dark-mode .card,
+body.dark-mode .login-card,
+body.dark-mode .form-card,
+body.dark-mode .container-form,
+body.dark-mode form {
+    background-color: #1e293b !important; 
+    color: #f8fafc !important;
+}
+
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode .title,
+body.dark-mode .subtitle {
+    color: #ffffff !important; 
+}
+
+body.dark-mode label,
+body.dark-mode p,
+body.dark-mode span:not(.badge-cat) {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode input[type="text"],
+body.dark-mode input[type="email"],
+body.dark-mode input[type="password"],
+body.dark-mode input[type="number"],
+body.dark-mode select {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+}
+
+body.dark-mode a,
+body.dark-mode .link {
+    color: #38bdf8 !important; 
+}
+/* Contenedor de la sección de gráficos */
+.charts-section {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+}
+
+/* Tarjetas individuales de los gráficos */
+.chart-card {
+    flex: 1;
+    background-color: #0f172a;
+    border: 2px solid #f59e0b;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 380px;
+    box-sizing: border-box;
+}
+
+.chart-card canvas {
+    max-height: 280px !important;
+    width: 100% !important;
 }

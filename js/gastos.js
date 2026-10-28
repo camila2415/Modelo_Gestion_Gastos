@@ -1,11 +1,27 @@
 /* ==========================================================================
-   MÓDULO DE GASTOS CON PERSISTENCIA OBLIGATORIA EN SQLITE + OPFS
+   MÓDULO PRINCIPAL DE GESTIÓN DE GASTOS (SGG - GRAND LINE)
+   Persistencia Relacional Obligatoria: SQLite + WebAssembly (sql.js) + OPFS
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
-    
+
     // ----------------------------------------------------------------------
-    // 1. CONTROL DE TEMA (MODO SOL / NOCHE)
+    // 0. USUARIO ACTIVO Y CONFIGURACIÓN INICIAL DE FECHA
+    // ----------------------------------------------------------------------
+    const usuarioActivo = localStorage.getItem('sgg_usuario_activo') || 'cami1524@gmail.com';
+    const userDisplay = document.getElementById('userEmailDisplay');
+    if (userDisplay) {
+        userDisplay.textContent = usuarioActivo;
+    }
+
+    // Setear la fecha de hoy por defecto en el input date
+    const inputFecha = document.getElementById('fecha');
+    if (inputFecha) {
+        inputFecha.valueAsDate = new Date();
+    }
+
+    // ----------------------------------------------------------------------
+    // 1. CONTROL DE TEMA (SOL / NOCHE) CON PERSISTENCIA
     // ----------------------------------------------------------------------
     const btnTema = document.getElementById('btnTema');
     const temaGuardado = localStorage.getItem('sgg_tema');
@@ -19,36 +35,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.body.classList.toggle('dark-mode');
             const esOscuro = document.body.classList.contains('dark-mode');
             localStorage.setItem('sgg_tema', esOscuro ? 'dark' : 'light');
+            inicializarGraficos(); // Redibuja los gráficos ajustando colores
         });
     }
 
     // ----------------------------------------------------------------------
-    // 2. CONTROL DE SESIÓN
+    // 2. CONTROL DE SESIÓN DE USUARIO
     // ----------------------------------------------------------------------
-    const btnCerrarSesion = document.getElementById('btnCerrarSesion');
-    if (btnCerrarSesion) {
-        btnCerrarSesion.addEventListener('click', () => {
+    const btnLogout = document.getElementById('btnLogout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
             if (confirm('¿Estás seguro de que deseas desembarcar del puerto?')) {
+                localStorage.removeItem('sgg_usuario_activo');
                 window.location.href = 'index.html';
             }
         });
     }
 
     // ----------------------------------------------------------------------
-    // 3. MOTOR SQLITE + OPFS (REQUISITO OBLIGATORIO)
+    // 3. BASE DE DATOS SQLITE + OPFS
     // ----------------------------------------------------------------------
     let db = null;
     let transacciones = [];
     const DB_NAME = 'gastos.sqlite';
 
-    // Inicialización del motor SQLite con WebAssembly y almacenamiento OPFS
     async function initSQLite() {
         try {
             const SQL = await initSqlJs({
                 locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
             });
 
-            // Acceso directo al disco con Origin Private File System (OPFS)
             const opfsRoot = await navigator.storage.getDirectory();
             let arrayBuffer = null;
 
@@ -58,11 +74,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 arrayBuffer = await file.arrayBuffer();
                 db = new SQL.Database(new Uint8Array(arrayBuffer));
             } catch (e) {
-                // Si el archivo .sqlite no existe aún en OPFS, creamos la BD vacía
                 db = new SQL.Database();
             }
 
-            // Crear tabla con consulta SQL estándar
+            // DDL de la tabla
             db.run(`
                 CREATE TABLE IF NOT EXISTS transacciones (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,11 +93,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             await guardarEnOPFS();
             await cargarTransaccionesSQL();
         } catch (err) {
-            console.error("Error al iniciar SQLite en OPFS:", err);
+            console.error("Error al inicializar SQLite en OPFS:", err);
         }
     }
 
-    // Guardar el binario .sqlite físicamente en disco (OPFS)
     async function guardarEnOPFS() {
         if (!db) return;
         const binaryData = db.export();
@@ -93,8 +107,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await writable.close();
     }
 
-    // CONSULTA SQL SELECT: Leer registros de la base de datos
     async function cargarTransaccionesSQL() {
+        if (!db) return;
         const stmt = db.prepare("SELECT * FROM transacciones ORDER BY id DESC");
         transacciones = [];
 
@@ -105,9 +119,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarInterfaz();
     }
 
-    // CONSULTA SQL INSERT: Agregar registro
-    async function guardarTransaccionSQL(descripcion, monto, tipo, categoria, comprobanteUrl) {
-        const fecha = new Date().toLocaleDateString('es-AR');
+    async function guardarTransaccionSQL(fecha, descripcion, monto, tipo, categoria, comprobanteUrl) {
+        if (!db) return;
 
         db.run(
             `INSERT INTO transacciones (fecha, descripcion, monto, tipo, categoria, comprobante) 
@@ -119,44 +132,89 @@ document.addEventListener('DOMContentLoaded', async () => {
         await cargarTransaccionesSQL();
     }
 
-    // CONSULTA SQL DELETE: Eliminar registro por ID
-    window.eliminarTransaccionSQL = async function(id) {
-        if (confirm('¿Deseas borrar esta anotación de la bitácora?')) {
-            db.run("DELETE FROM transacciones WHERE id = ?", [id]);
-            await guardarEnOPFS();
-            await cargarTransaccionesSQL();
+    // Función de eliminación con Modal o Alerta nativa
+    window.eliminarTransaccion = async function (id) {
+        const modal = document.getElementById('modalConfirmar');
+        const btnAceptar = document.getElementById('btnAceptarEliminar');
+        const btnCancelar = document.getElementById('btnCancelarEliminar');
+
+        if (modal && btnAceptar && btnCancelar) {
+            modal.style.display = 'flex';
+
+            const confirmar = async () => {
+                db.run("DELETE FROM transacciones WHERE id = ?", [id]);
+                await guardarEnOPFS();
+                await cargarTransaccionesSQL();
+                modal.style.display = 'none';
+                limpiarListeners();
+            };
+
+            const cancelar = () => {
+                modal.style.display = 'none';
+                limpiarListeners();
+            };
+
+            function limpiarListeners() {
+                btnAceptar.removeEventListener('click', confirmar);
+                btnCancelar.removeEventListener('click', cancelar);
+            }
+
+            btnAceptar.addEventListener('click', confirmar);
+            btnCancelar.addEventListener('click', cancelar);
+        } else {
+            if (confirm('¿Deseas borrar esta anotación de la bitácora?')) {
+                db.run("DELETE FROM transacciones WHERE id = ?", [id]);
+                await guardarEnOPFS();
+                await cargarTransaccionesSQL();
+            }
         }
     };
 
-    // ----------------------------------------------------------------------
-    // 4. GRÁFICOS (Chart.js)
-    // ----------------------------------------------------------------------
     let chartCategoriasInstance = null;
     let chartBalanceInstance = null;
 
     function inicializarGraficos() {
-        const ctxCat = document.getElementById('chartCategorias');
-        const ctxBal = document.getElementById('chartBalance');
+        const ctxDona = document.getElementById('chartDona');
+        const ctxBarras = document.getElementById('chartBarras');
 
-        if (!ctxCat || !ctxBal) return;
+        if (!ctxDona || !ctxBarras) return;
 
-        chartCategoriasInstance = new Chart(ctxCat, {
+        const esOscuro = document.body.classList.contains('dark-mode');
+        const colorTexto = esOscuro ? '#f8fafc' : '#1e293b';
+
+        if (chartCategoriasInstance) chartCategoriasInstance.destroy();
+        if (chartBalanceInstance) chartBalanceInstance.destroy();
+
+        // 1. Gráfico de Categorías (Dona)
+        chartCategoriasInstance = new Chart(ctxDona, {
             type: 'doughnut',
             data: {
                 labels: [],
                 datasets: [{
                     data: [],
                     backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'],
-                    borderWidth: 2
+                    borderWidth: 2,
+                    borderColor: esOscuro ? '#0f172a' : '#ffffff'
                 }]
             },
-            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%', // ACHICA EL ANCHO DE LA DONA PARA IGUALAR TAMAÑOS
+                plugins: {
+                    legend: { 
+                        position: 'bottom', 
+                        labels: { color: colorTexto, padding: 12 } 
+                    }
+                }
+            }
         });
 
-        chartBalanceInstance = new Chart(ctxBal, {
+        // 2. Gráfico Balance Ingresos vs Egresos (Barras)
+        chartBalanceInstance = new Chart(ctxBarras, {
             type: 'bar',
             data: {
-                labels: ['Ingresos (Botín)', 'Gastos'],
+                labels: ['Ingresos (Botín)', 'Egresos (Gastos)'],
                 datasets: [{
                     label: 'Monto Total ($)',
                     data: [0, 0],
@@ -164,18 +222,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                     borderRadius: 6
                 }]
             },
-            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { color: colorTexto },
+                        grid: { color: esOscuro ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }
+                    },
+                    x: { ticks: { color: colorTexto }, grid: { display: false } }
+                }
+            }
         });
     }
 
     // ----------------------------------------------------------------------
-    // 5. INTERFAZ DE USUARIO Y TABLA
+    // 5. RENDERING Y ACTUALIZACIÓN DE UI DE TU HTML
     // ----------------------------------------------------------------------
     function renderizarInterfaz() {
-        const tablaCuerpo = document.getElementById('tablaGastosCuerpo');
-        const montoTotalEl = document.getElementById('montoTotal');
+        const tablaCuerpo = document.getElementById('tablaGastosBody');
+        const totalGastadoEl = document.getElementById('totalGastado');
 
         if (!tablaCuerpo) return;
+
         tablaCuerpo.innerHTML = '';
 
         let totalIngresos = 0;
@@ -192,32 +263,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                 totalPorCategoria[item.categoria] = (totalPorCategoria[item.categoria] || 0) + monto;
             }
 
+            // Formatear la fecha para mostrarla amigable
+            const fechaFormateada = item.fecha.includes('-') 
+                ? item.fecha.split('-').reverse().join('/') 
+                : item.fecha;
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${item.fecha}</td>
-                <td><strong>${item.descripcion}</strong></td>
+                <td>${fechaFormateada}</td>
+                <td><span style="color: ${item.tipo === 'ingreso' ? '#10b981' : '#ef4444'}; font-weight: bold;">
+                    ${item.tipo === 'ingreso' ? '🟢 Ingreso' : '🔴 Egreso'}
+                </span></td>
                 <td><span class="badge-cat">${item.categoria}</span></td>
+                <td><strong>${item.descripcion}</strong></td>
                 <td style="color: ${item.tipo === 'ingreso' ? '#10b981' : '#ef4444'}; font-weight: bold;">
                     ${item.tipo === 'ingreso' ? '+' : '-'}$${monto.toFixed(2)}
                 </td>
                 <td>
                     ${item.comprobante 
-                        ? `<a href="${item.comprobante}" target="_blank" class="link">📎 Ver File</a>` 
+                        ? `<a href="${item.comprobante}" target="_blank" class="link">📎 Ver Ticket</a>` 
                         : '<span style="color: #94a3b8;">Sin adjunto</span>'}
                 </td>
                 <td>
-                    <button class="btn-danger btn-sm" onclick="eliminarTransaccionSQL(${item.id})">🗑️ Borrar</button>
+                    <button class="btn-delete btn-sm" onclick="eliminarTransaccion(${item.id})">🗑️ Borrar</button>
                 </td>
             `;
             tablaCuerpo.appendChild(tr);
         });
 
+        // Actualizar el "Botín Acumulado" (Balance Total)
         const balanceTotal = totalIngresos - totalGastos;
-        if (montoTotalEl) {
-            montoTotalEl.textContent = `$${balanceTotal.toFixed(2)}`;
-            montoTotalEl.style.color = balanceTotal >= 0 ? '#10b981' : '#ef4444';
+        if (totalGastadoEl) {
+            totalGastadoEl.textContent = balanceTotal.toFixed(2);
+            totalGastadoEl.parentElement.style.color = balanceTotal >= 0 ? '#10b981' : '#ef4444';
         }
 
+        // Actualizar Gráficos
         if (chartCategoriasInstance && chartBalanceInstance) {
             chartCategoriasInstance.data.labels = Object.keys(totalPorCategoria);
             chartCategoriasInstance.data.datasets[0].data = Object.values(totalPorCategoria);
@@ -229,7 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ----------------------------------------------------------------------
-    // 6. FORMULARIO
+    // 6. MANEJO DE FORMULARIO DE TU HTML
     // ----------------------------------------------------------------------
     const formGasto = document.getElementById('formGasto');
 
@@ -237,35 +318,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         formGasto.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const descripcion = document.getElementById('descripcion').value.trim();
-            const monto = parseFloat(document.getElementById('monto').value);
-            const tipo = document.getElementById('tipo').value;
-            const categoria = document.getElementById('categoria').value;
-            const comprobanteInput = document.getElementById('comprobante');
+            // Mapeo directo a los IDs exactos de tu HTML
+            const inputTipo = document.getElementById('tipoMovimiento');
+            const inputMonto = document.getElementById('monto');
+            const inputCat = document.getElementById('categoria');
+            const inputFecha = document.getElementById('fecha');
+            const inputDesc = document.getElementById('descripcion');
+            const inputComp = document.getElementById('comprobanteFile');
 
-            if (!descripcion || isNaN(monto) || !categoria) {
-                alert('Por favor, completa todos los campos requeridos.');
+            const tipo = inputTipo ? inputTipo.value : 'egreso';
+            const monto = inputMonto ? parseFloat(inputMonto.value) : NaN;
+            const categoria = inputCat ? inputCat.value : 'Varios';
+            const fecha = inputFecha ? inputFecha.value : new Date().toISOString().split('T')[0];
+            const descripcion = inputDesc ? inputDesc.value.trim() : '';
+
+            if (!descripcion || isNaN(monto) || monto <= 0 || !categoria) {
+                alert('Por favor, ingresa una descripción, un monto válido y selecciona una categoría.');
                 return;
             }
 
-            const procesarFormulario = async (comprobanteUrl = null) => {
-                await guardarTransaccionSQL(descripcion, monto, tipo, categoria, comprobanteUrl);
+            const procesarYGuardar = async (comprobanteUrl = null) => {
+                await guardarTransaccionSQL(fecha, descripcion, monto, tipo, categoria, comprobanteUrl);
                 formGasto.reset();
+                if (inputFecha) inputFecha.valueAsDate = new Date(); // Resetear con la fecha de hoy
             };
 
-            if (comprobanteInput && comprobanteInput.files.length > 0) {
+            if (inputComp && inputComp.files && inputComp.files.length > 0) {
                 const reader = new FileReader();
                 reader.onload = async function (event) {
-                    await procesarFormulario(event.target.result);
+                    await procesarYGuardar(event.target.result);
                 };
-                reader.readAsDataURL(comprobanteInput.files[0]);
+                reader.readAsDataURL(inputComp.files[0]);
             } else {
-                await procesarFormulario();
+                await procesarYGuardar();
             }
         });
     }
 
-    // Inicializar SQLite y Gráficos
+    // Inicialización general
     inicializarGraficos();
     await initSQLite();
 });
