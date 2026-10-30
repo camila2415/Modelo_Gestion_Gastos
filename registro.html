@@ -1,67 +1,117 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGG - Reclutamiento de Piratas 🏴‍☠️</title>
-    <link rel="icon" type="image/png" href="assets/img/favicon.png">
+    <title>SGG- Reclutamiento de Piratas</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="one-piece-theme auth-page">
+<body class="one-piece-theme auth-page" data-tema="one-piece" data-modo="light">
 
     <div class="header-tools">
-        <button id="btnTema" class="btn-theme">☀️ Modo Sol / Noche 🌙</button>
+        <select id="selectTemaEstilo" class="select-tema">
+            <option value="one-piece">🏴‍☠️ One Piece</option>
+            <option value="normal">💼 Normal</option>
+        </select>
+
+        <button id="btnTemaModo" class="btn-theme">☀️ / 🌙</button>
     </div>
 
     <div class="brand-header" style="text-align: center; margin-bottom: 20px;">
-        <img src="assets/img/logo-jolly-roger.png" alt="Jolly Roger" class="auth-logo" onerror="this.style.display='none'">
-        <h1 class="titulo-principal" style="text-align: center; margin-bottom: 5px;">🏴‍☠️ Tesorería del Grand Line</h1>
-        <p class="subtitulo-pirata" style="text-align: center; margin: 0 auto; display: block;">Únete a la Tripulación y Gestiona tu Botín</p>
+        <h1 class="titulo-principal" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 5px;">
+            <img src="assets/img/luffy - Editado.png" alt="Logo" class="auth-logo-inline txt-onepiece" onerror="this.style.display='none'">
+            <span class="txt-onepiece">Tesorería del Grand Line</span>
+            <span class="txt-normal">Sistema de Gestión de Gastos</span>
+        </h1>
+        
+        <p class="subtitulo-pirata" style="text-align: center; margin: 0 auto; display: block;">
+            <span class="txt-onepiece">Únete a la Tripulación y Gestiona tu Botín</span>
+            <span class="txt-normal">Crea una cuenta para administrar tus finanzas</span>
+        </p>
     </div>
 
     <main class="login-card">
-        <h2>📜 Formulario de Reclutamiento</h2>
+        <h2>
+            <span class="txt-onepiece">📜 Formulario de Reclutamiento</span>
+            <span class="txt-normal">📝 Crear Cuenta</span>
+        </h2>
         
         <form id="formRegistro">
             <div class="form-group">
-                <label for="regEmail">Correo Electrónico</label>
+                <label for="regEmail">
+                    <span class="txt-onepiece">Correo Electrónico del Capitán</span>
+                    <span class="txt-normal">Correo Electrónico</span>
+                </label>
                 <input type="email" id="regEmail" placeholder="usuario@correo.com" required>
             </div>
 
             <div class="form-group">
-                <label for="regFechaNac">Fecha de Nacimiento</label>
+                <label for="regFechaNac">
+                    <span class="txt-onepiece">Fecha de Zarpado (Nacimiento)</span>
+                    <span class="txt-normal">Fecha de Nacimiento</span>
+                </label>
                 <input type="date" id="regFechaNac" required>
             </div>
 
             <div class="form-group">
-                <label for="passwordRegistro">Clave del Cofre del Tesoro</label>
+                <label for="passwordRegistro">
+                    <span class="txt-onepiece">Clave del Cofre del Tesoro</span>
+                    <span class="txt-normal">Contraseña</span>
+                </label>
                 <input type="password" id="passwordRegistro" placeholder="••••••••" required>
-                <button type="button" id="verPasswordRegistro" class="btn-eye">👁 Mostrar contraseña</button>
+                
+                <div style="text-align: left !important; margin-top: 5px; margin-bottom: 10px;">
+                    <a href="#" id="verPasswordRegistro" class="link-small" style="font-size: 0.85rem; text-decoration: none;">👁️ Mostrar contraseña</a>
+                </div>
             </div>
 
             <div class="form-group">
-                <label for="repetirPassword">Repetir Clave</label>
+                <label for="repetirPassword">
+                    <span class="txt-onepiece">Repetir Clave del Cofre</span>
+                    <span class="txt-normal">Repetir Contraseña</span>
+                </label>
                 <input type="password" id="repetirPassword" placeholder="••••••••" required>
             </div>
 
             <ul class="requisitos-lista">
                 <li id="reqDominioMail">❌ Dominio de correo válido (Gmail, Hotmail, Yahoo, Edu, etc.)</li>
                 <li id="reqEdad">❌ Ser mayor de 18 años</li>
-                <li id="longitud">❌ Mínimo 8 caracteres</li>
-                <li id="mayuscula">❌ Una letra mayúscula</li>
-                <li id="minuscula">❌ Una letra minúscula</li>
-                <li id="numero">❌ Un número</li>
-                <li id="especial">❌ Un símbolo especial</li>
+                <li id="reqLongitud">❌ Mínimo 8 caracteres</li>
+                <li id="reqMayuscula">❌ Una letra mayúscula</li>
+                <li id="reqMinuscula">❌ Una letra minúscula</li>
+                <li id="reqNumero">❌ Un número</li>
+                <li id="reqEspecial">❌ Un símbolo especial</li>
             </ul>
 
-            <button type="submit" id="btnRegistrar" class="btn-ingresar" disabled>⚔️ Registrarse en la Tripulación</button>
+            <button type="submit" id="btnRegistrar" class="btn-ingresar">
+                <span class="txt-onepiece">⚔️ Registrarse en la Tripulación</span>
+                <span class="txt-normal">Completar Registro</span>
+            </button>
         </form>
 
         <div class="links-container">
-            <a href="index.html" class="link">⚓ ¿Ya eres de la tripulación? Inicia sesión</a>
+            <a href="index.html" class="link">
+                <span class="txt-onepiece">⚓ ¿Ya eres de la tripulación? Inicia sesión</span>
+                <span class="txt-normal">¿Ya tienes cuenta? Iniciar Sesión</span>
+            </a>
         </div>
     </main>
 
+    <!-- Script de autenticación -->
     <script src="js/koo.js"></script>
 </body>
 </html>
+<!-- Modal / Cartel Personalizado de Alerta -->
+<div id="customModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+        <h3 id="modalTitle">
+            <span class="txt-onepiece">🏴‍☠️ ¡Alerta en la Tripulación!</span>
+            <span class="txt-normal">⚠️ Aviso del Sistema</span>
+        </h3>
+        <p id="modalMessage"></p>
+        <button id="modalCloseBtn" class="btn-ingresar" style="margin-top: 15px; width: 100%;">
+            <span class="txt-onepiece">Entendido, Capitán</span>
+            <span class="txt-normal">Aceptar</span>
+        </button>
+    </div>
+</div>

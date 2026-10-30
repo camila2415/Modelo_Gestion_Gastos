@@ -1,361 +1,511 @@
 /* ==========================================================================
-   MÓDULO PRINCIPAL DE GESTIÓN DE GASTOS (SGG - GRAND LINE)
-   Persistencia Relacional Obligatoria: SQLite + WebAssembly (sql.js) + OPFS
+   SISTEMA DE GESTIÓN DE GASTOS (SGG) - VERSIÓN INTEGRAL CORREGIDA
+   SQLite + OPFS + Chart.js + Modales Tematizados + Edición de Registros
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // ----------------------------------------------------------------------
-    // 0. USUARIO ACTIVO Y CONFIGURACIÓN INICIAL DE FECHA
-    // ----------------------------------------------------------------------
-    const usuarioActivo = localStorage.getItem('sgg_usuario_activo') || 'cami1524@gmail.com';
-    const userDisplay = document.getElementById('userEmailDisplay');
-    if (userDisplay) {
-        userDisplay.textContent = usuarioActivo;
-    }
-
-    // Setear la fecha de hoy por defecto en el input date
-    const inputFecha = document.getElementById('fecha');
-    if (inputFecha) {
-        inputFecha.valueAsDate = new Date();
-    }
-
-    // ----------------------------------------------------------------------
-    // 1. CONTROL DE TEMA (SOL / NOCHE) CON PERSISTENCIA
-    // ----------------------------------------------------------------------
-    const btnTema = document.getElementById('btnTema');
-    const temaGuardado = localStorage.getItem('sgg_tema');
-
-    if (temaGuardado === 'dark') {
-        document.body.classList.add('dark-mode');
-    }
-
-    if (btnTema) {
-        btnTema.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            const esOscuro = document.body.classList.contains('dark-mode');
-            localStorage.setItem('sgg_tema', esOscuro ? 'dark' : 'light');
-            inicializarGraficos(); // Redibuja los gráficos ajustando colores
-        });
-    }
-
-    // ----------------------------------------------------------------------
-    // 2. CONTROL DE SESIÓN DE USUARIO
-    // ----------------------------------------------------------------------
-    const btnLogout = document.getElementById('btnLogout');
-    if (btnLogout) {
-        btnLogout.addEventListener('click', () => {
-            if (confirm('¿Estás seguro de que deseas desembarcar del puerto?')) {
-                localStorage.removeItem('sgg_usuario_activo');
-                window.location.href = 'index.html';
-            }
-        });
-    }
-
-    // ----------------------------------------------------------------------
-    // 3. BASE DE DATOS SQLITE + OPFS
-    // ----------------------------------------------------------------------
     let db = null;
-    let transacciones = [];
-    const DB_NAME = 'gastos.sqlite';
+    let chartDona = null;
+    let chartBarras = null;
+    let idGastoEnEdicion = null;
 
-    async function initSQLite() {
+    const IMGBB_API_KEY = 'c38a2e0a2948b8c2d2572b123652a281';
+
+    // 1. SESIÓN ACTIVA Y AISLAMIENTO
+    let usuarioActivo = localStorage.getItem('sgg_usuario_activo') || 'chopper@gmail.com';
+    localStorage.setItem('sgg_usuario_activo', usuarioActivo);
+
+    const userEmailDisplay = document.getElementById('userEmailDisplay');
+    if (userEmailDisplay) userEmailDisplay.textContent = usuarioActivo;
+
+    const nombreArchivoDB = `sgg_database_${usuarioActivo.replace(/[^a-zA-Z0-9]/g, '_')}.sqlite`;
+
+    // 2. MODAL DE ALERTAS TEMATIZADO
+    const mostrarAlertaCustom = (mensaje, tituloOverride = null) => {
+        const modal = document.getElementById('modalAlertaCustom');
+        const txtTitulo = document.getElementById('modalAlertaTitulo');
+        const txtMensaje = document.getElementById('modalAlertaMensaje');
+        const btnAceptar = document.getElementById('btnAceptarAlertaCustom');
+
+        const selectTema = document.getElementById('selectorTema') || document.querySelector('select');
+        const valTema = selectTema ? selectTema.value.toLowerCase() : '';
+        const esOnePiece = valTema.includes('piece') || document.body.getAttribute('data-tema') === 'one-piece';
+
+        const tituloDefecto = esOnePiece ? '⚠️ Aviso del Navegante' : '⚠️ Atención del Sistema';
+
+        if (modal && txtMensaje) {
+            if (txtTitulo) txtTitulo.textContent = tituloOverride || tituloDefecto;
+            txtMensaje.textContent = mensaje;
+            modal.style.display = 'flex';
+
+            if (btnAceptar) {
+                btnAceptar.onclick = () => { modal.style.display = 'none'; };
+            }
+        } else {
+            alert(`${tituloOverride || tituloDefecto}\n\n${mensaje}`);
+        }
+    };
+
+    // 3. OPFS (STORAGE BINARIO)
+    const cargarDesdeOPFS = async () => {
+        try {
+            const root = await navigator.storage.getDirectory();
+            const fileHandle = await root.getFileHandle(nombreArchivoDB);
+            const file = await fileHandle.getFile();
+            const arrayBuffer = await file.arrayBuffer();
+            return new Uint8Array(arrayBuffer);
+        } catch (err) {
+            return null;
+        }
+    };
+
+    const guardarEnOPFS = async () => {
+        if (!db) return;
+        try {
+            const data = db.export();
+            const root = await navigator.storage.getDirectory();
+            const fileHandle = await root.getFileHandle(nombreArchivoDB, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(data);
+            await writable.close();
+        } catch (err) {
+            console.error("❌ Error guardando en OPFS:", err);
+        }
+    };
+
+    // 4. INICIALIZAR SQLITE WASM
+    const initSQLiteDB = async () => {
         try {
             const SQL = await initSqlJs({
                 locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
             });
 
-            const opfsRoot = await navigator.storage.getDirectory();
-            let arrayBuffer = null;
+            const datosBinarios = await cargarDesdeOPFS();
+            db = datosBinarios ? new SQL.Database(datosBinarios) : new SQL.Database();
 
-            try {
-                const fileHandle = await opfsRoot.getFileHandle(DB_NAME);
-                const file = await fileHandle.getFile();
-                arrayBuffer = await file.arrayBuffer();
-                db = new SQL.Database(new Uint8Array(arrayBuffer));
-            } catch (e) {
-                db = new SQL.Database();
-            }
-
-            // DDL de la tabla
-            db.run(`
-                CREATE TABLE IF NOT EXISTS transacciones (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+            const DDL = `
+                CREATE TABLE IF NOT EXISTS movimientos (
+                    id INTEGER PRIMARY KEY,
+                    email_usuario TEXT,
+                    usuario TEXT,
+                    tipo_movimiento TEXT NOT NULL,
+                    monto REAL NOT NULL,
+                    categoria TEXT NOT NULL,
                     fecha TEXT NOT NULL,
                     descripcion TEXT NOT NULL,
-                    monto REAL NOT NULL,
-                    tipo TEXT NOT NULL,
-                    categoria TEXT NOT NULL,
-                    comprobante TEXT
+                    url_comprobante TEXT,
+                    estado_activo INTEGER DEFAULT 1,
+                    activo INTEGER DEFAULT 1
                 );
-            `);
+            `;
+            db.exec(DDL);
+
+            try { db.exec("ALTER TABLE movimientos ADD COLUMN email_usuario TEXT;"); } catch (e) {}
+            try { db.exec("ALTER TABLE movimientos ADD COLUMN estado_activo INTEGER DEFAULT 1;"); } catch (e) {}
 
             await guardarEnOPFS();
-            await cargarTransaccionesSQL();
         } catch (err) {
-            console.error("Error al inicializar SQLite en OPFS:", err);
-        }
-    }
-
-    async function guardarEnOPFS() {
-        if (!db) return;
-        const binaryData = db.export();
-        const opfsRoot = await navigator.storage.getDirectory();
-        const fileHandle = await opfsRoot.getFileHandle(DB_NAME, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(binaryData);
-        await writable.close();
-    }
-
-    async function cargarTransaccionesSQL() {
-        if (!db) return;
-        const stmt = db.prepare("SELECT * FROM transacciones ORDER BY id DESC");
-        transacciones = [];
-
-        while (stmt.step()) {
-            transacciones.push(stmt.getAsObject());
-        }
-        stmt.free();
-        renderizarInterfaz();
-    }
-
-    async function guardarTransaccionSQL(fecha, descripcion, monto, tipo, categoria, comprobanteUrl) {
-        if (!db) return;
-
-        db.run(
-            `INSERT INTO transacciones (fecha, descripcion, monto, tipo, categoria, comprobante) 
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [fecha, descripcion, monto, tipo, categoria, comprobanteUrl]
-        );
-
-        await guardarEnOPFS();
-        await cargarTransaccionesSQL();
-    }
-
-    // Función de eliminación con Modal o Alerta nativa
-    window.eliminarTransaccion = async function (id) {
-        const modal = document.getElementById('modalConfirmar');
-        const btnAceptar = document.getElementById('btnAceptarEliminar');
-        const btnCancelar = document.getElementById('btnCancelarEliminar');
-
-        if (modal && btnAceptar && btnCancelar) {
-            modal.style.display = 'flex';
-
-            const confirmar = async () => {
-                db.run("DELETE FROM transacciones WHERE id = ?", [id]);
-                await guardarEnOPFS();
-                await cargarTransaccionesSQL();
-                modal.style.display = 'none';
-                limpiarListeners();
-            };
-
-            const cancelar = () => {
-                modal.style.display = 'none';
-                limpiarListeners();
-            };
-
-            function limpiarListeners() {
-                btnAceptar.removeEventListener('click', confirmar);
-                btnCancelar.removeEventListener('click', cancelar);
-            }
-
-            btnAceptar.addEventListener('click', confirmar);
-            btnCancelar.addEventListener('click', cancelar);
-        } else {
-            if (confirm('¿Deseas borrar esta anotación de la bitácora?')) {
-                db.run("DELETE FROM transacciones WHERE id = ?", [id]);
-                await guardarEnOPFS();
-                await cargarTransaccionesSQL();
-            }
+            console.error("❌ Error inicializando SQLite:", err);
         }
     };
 
-    let chartCategoriasInstance = null;
-    let chartBalanceInstance = null;
+    // 5. CONSULTAS SQL
+    const obtenerMovimientosSQL = () => {
+        if (!db) return [];
+        try {
+            const query = `
+                SELECT id, 
+                       COALESCE(email_usuario, usuario) as email_usuario, 
+                       tipo_movimiento, monto, categoria, fecha, descripcion, url_comprobante, 
+                       COALESCE(estado_activo, activo) as estado_activo 
+                FROM movimientos 
+                WHERE (email_usuario = '${usuarioActivo}' OR usuario = '${usuarioActivo}') 
+                  AND (estado_activo = 1 OR estado_activo = 'true' OR activo = 1 OR activo = 'true') 
+                ORDER BY fecha DESC, id DESC;
+            `;
+            const res = db.exec(query);
+            if (!res || res.length === 0) return [];
 
-    function inicializarGraficos() {
-        const ctxDona = document.getElementById('chartDona');
-        const ctxBarras = document.getElementById('chartBarras');
-
-        if (!ctxDona || !ctxBarras) return;
-
-        const esOscuro = document.body.classList.contains('dark-mode');
-        const colorTexto = esOscuro ? '#f8fafc' : '#1e293b';
-
-        if (chartCategoriasInstance) chartCategoriasInstance.destroy();
-        if (chartBalanceInstance) chartBalanceInstance.destroy();
-
-        // 1. Gráfico de Categorías (Dona)
-        chartCategoriasInstance = new Chart(ctxDona, {
-            type: 'doughnut',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'],
-                    borderWidth: 2,
-                    borderColor: esOscuro ? '#0f172a' : '#ffffff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '70%', // ACHICA EL ANCHO DE LA DONA PARA IGUALAR TAMAÑOS
-                plugins: {
-                    legend: { 
-                        position: 'bottom', 
-                        labels: { color: colorTexto, padding: 12 } 
+            const cols = res[0].columns;
+            return res[0].values.map(row => {
+                let obj = {};
+                cols.forEach((col, idx) => {
+                    if (col === 'estado_activo') {
+                        obj[col] = true;
+                    } else if (col === 'monto' || col === 'id') {
+                        obj[col] = Number(row[idx]);
+                    } else {
+                        obj[col] = row[idx];
                     }
-                }
-            }
-        });
+                });
+                return obj;
+            });
+        } catch (err) {
+            console.error("❌ Error en SELECT:", err);
+            return [];
+        }
+    };
 
-        // 2. Gráfico Balance Ingresos vs Egresos (Barras)
-        chartBalanceInstance = new Chart(ctxBarras, {
-            type: 'bar',
-            data: {
-                labels: ['Ingresos (Botín)', 'Egresos (Gastos)'],
-                datasets: [{
-                    label: 'Monto Total ($)',
-                    data: [0, 0],
-                    backgroundColor: ['#10b981', '#ef4444'],
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { color: colorTexto },
-                        grid: { color: esOscuro ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }
-                    },
-                    x: { ticks: { color: colorTexto }, grid: { display: false } }
-                }
-            }
-        });
-    }
+    const insertarMovimientoSQL = async (mov) => {
+        if (!db) return;
+        try {
+            const stmt = db.prepare(`
+                INSERT INTO movimientos (id, email_usuario, usuario, tipo_movimiento, monto, categoria, fecha, descripcion, url_comprobante, estado_activo, activo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1);
+            `);
+            stmt.run([
+                mov.id,
+                mov.email_usuario,
+                mov.email_usuario,
+                mov.tipo_movimiento,
+                mov.monto,
+                mov.categoria,
+                mov.fecha,
+                mov.descripcion,
+                mov.url_comprobante
+            ]);
+            stmt.free();
+            await guardarEnOPFS();
+        } catch (err) {
+            console.error("❌ Error en INSERT:", err);
+        }
+    };
 
-    // ----------------------------------------------------------------------
-    // 5. RENDERING Y ACTUALIZACIÓN DE UI DE TU HTML
-    // ----------------------------------------------------------------------
-    function renderizarInterfaz() {
-        const tablaCuerpo = document.getElementById('tablaGastosBody');
-        const totalGastadoEl = document.getElementById('totalGastado');
+    const actualizarMovimientoSQL = async (mov) => {
+        if (!db) return;
+        try {
+            const stmt = db.prepare(`
+                UPDATE movimientos 
+                SET tipo_movimiento = ?, monto = ?, categoria = ?, fecha = ?, descripcion = ?, url_comprobante = COALESCE(?, url_comprobante)
+                WHERE id = ? AND (email_usuario = ? OR usuario = ?);
+            `);
+            stmt.run([
+                mov.tipo_movimiento,
+                mov.monto,
+                mov.categoria,
+                mov.fecha,
+                mov.descripcion,
+                mov.url_comprobante,
+                mov.id,
+                usuarioActivo,
+                usuarioActivo
+            ]);
+            stmt.free();
+            await guardarEnOPFS();
+        } catch (err) {
+            console.error("❌ Error en UPDATE:", err);
+        }
+    };
 
-        if (!tablaCuerpo) return;
+    const deshabilitarMovimientoSQL = async (id) => {
+        if (!db) return;
+        db.exec(`UPDATE movimientos SET estado_activo = 0, activo = 0 WHERE id = ${id};`);
+        await guardarEnOPFS();
+    };
 
-        tablaCuerpo.innerHTML = '';
+    // 6. SUBIDA A IMGBB
+    const subirComprobanteAPI = async (fileInput) => {
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) return null;
+        try {
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            return (data && data.data) ? data.data.url : null;
+        } catch (err) {
+            return null;
+        }
+    };
 
+    // 7. RENDERIZADO DEL DASHBOARD
+    const actualizarDashboard = () => {
+        const movimientos = obtenerMovimientosSQL();
+        console.log("📊 Movimientos cargados desde SQLite:", movimientos);
+
+        let balance = 0;
         let totalIngresos = 0;
-        let totalGastos = 0;
-        const totalPorCategoria = {};
+        let totalEgresos = 0;
+        let egresosPorCat = {};
 
-        transacciones.forEach((item) => {
-            const monto = parseFloat(item.monto);
+        const tablaBody = document.getElementById('tablaGastosBody') || document.querySelector('tbody');
+        if (tablaBody) tablaBody.innerHTML = '';
 
-            if (item.tipo === 'ingreso') {
+        if (movimientos.length === 0 && tablaBody) {
+            tablaBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:15px; opacity:0.6;">No hay movimientos registrados.</td></tr>`;
+        }
+
+        movimientos.forEach(m => {
+            const monto = Number(m.monto) || 0;
+            const esIngreso = m.tipo_movimiento.toLowerCase().includes('ingreso');
+
+            if (esIngreso) {
+                balance += monto;
                 totalIngresos += monto;
             } else {
-                totalGastos += monto;
-                totalPorCategoria[item.categoria] = (totalPorCategoria[item.categoria] || 0) + monto;
+                balance -= monto;
+                totalEgresos += monto;
+                const cat = m.categoria || 'Varios';
+                egresosPorCat[cat] = (egresosPorCat[cat] || 0) + monto;
             }
 
-            // Formatear la fecha para mostrarla amigable
-            const fechaFormateada = item.fecha.includes('-') 
-                ? item.fecha.split('-').reverse().join('/') 
-                : item.fecha;
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${fechaFormateada}</td>
-                <td><span style="color: ${item.tipo === 'ingreso' ? '#10b981' : '#ef4444'}; font-weight: bold;">
-                    ${item.tipo === 'ingreso' ? '🟢 Ingreso' : '🔴 Egreso'}
-                </span></td>
-                <td><span class="badge-cat">${item.categoria}</span></td>
-                <td><strong>${item.descripcion}</strong></td>
-                <td style="color: ${item.tipo === 'ingreso' ? '#10b981' : '#ef4444'}; font-weight: bold;">
-                    ${item.tipo === 'ingreso' ? '+' : '-'}$${monto.toFixed(2)}
-                </td>
-                <td>
-                    ${item.comprobante 
-                        ? `<a href="${item.comprobante}" target="_blank" class="link">📎 Ver Ticket</a>` 
-                        : '<span style="color: #94a3b8;">Sin adjunto</span>'}
-                </td>
-                <td>
-                    <button class="btn-delete btn-sm" onclick="eliminarTransaccion(${item.id})">🗑️ Borrar</button>
-                </td>
-            `;
-            tablaCuerpo.appendChild(tr);
+            if (tablaBody) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${m.fecha || '-'}</td>
+                    <td><b style="color:${esIngreso ? '#10b981' : '#ef4444'}">${esIngreso ? '🟢 Ingreso' : '🔴 Egreso'}</b></td>
+                    <td>${m.categoria || 'General'}</td>
+                    <td>${m.descripcion || ''}</td>
+                    <td style="font-weight:bold; color:${esIngreso ? '#10b981' : '#ef4444'}">${esIngreso ? '+' : '-'}$${monto.toFixed(2)}</td>
+                    <td>${m.url_comprobante ? `<a href="${m.url_comprobante}" target="_blank" style="color:#3b82f6;">📎 Ticket</a>` : 'Sin ticket'}</td>
+                    <td>
+                        <button class="btn-editar" data-id="${m.id}" style="cursor:pointer; padding:2px 6px; margin-right:4px;">✏️</button>
+                        <button class="btn-eliminar" data-id="${m.id}" style="cursor:pointer; padding:2px 6px;">🗑️</button>
+                    </td>
+                `;
+                tablaBody.appendChild(tr);
+            }
         });
 
-        // Actualizar el "Botín Acumulado" (Balance Total)
-        const balanceTotal = totalIngresos - totalGastos;
-        if (totalGastadoEl) {
-            totalGastadoEl.textContent = balanceTotal.toFixed(2);
-            totalGastadoEl.parentElement.style.color = balanceTotal >= 0 ? '#10b981' : '#ef4444';
+        const balanceEl = document.getElementById('totalGastado');
+        if (balanceEl) {
+            balanceEl.textContent = `${balance.toFixed(2)}`;
+            balanceEl.style.color = balance >= 0 ? '#10b981' : '#ef4444';
         }
 
-        // Actualizar Gráficos
-        if (chartCategoriasInstance && chartBalanceInstance) {
-            chartCategoriasInstance.data.labels = Object.keys(totalPorCategoria);
-            chartCategoriasInstance.data.datasets[0].data = Object.values(totalPorCategoria);
-            chartCategoriasInstance.update();
+        // BINDINGS DE EDICIÓN Y ELIMINACIÓN EN TABLA
+        document.querySelectorAll('.btn-editar').forEach(btn => {
+            btn.onclick = (e) => {
+                e.preventDefault();
+                const id = Number(e.currentTarget.getAttribute('data-id'));
+                const gasto = movimientos.find(item => item.id === id);
 
-            chartBalanceInstance.data.datasets[0].data = [totalIngresos, totalGastos];
-            chartBalanceInstance.update();
-        }
-    }
+                if (gasto) {
+                    const formGasto = document.getElementById('formGasto') || document.querySelector('form');
+                    const tipoEl = formGasto.querySelector('select');
+                    const montoEl = formGasto.querySelector('input[type="number"]');
+                    const catEl = document.getElementById('categoria') || formGasto.querySelectorAll('input[type="text"]')[0];
+                    const fechaEl = formGasto.querySelector('input[type="date"]');
+                    const descEl = document.getElementById('descripcion') || formGasto.querySelectorAll('input[type="text"]')[1];
+                    const btnSubmit = formGasto.querySelector('button');
 
-    // ----------------------------------------------------------------------
-    // 6. MANEJO DE FORMULARIO DE TU HTML
-    // ----------------------------------------------------------------------
-    const formGasto = document.getElementById('formGasto');
+                    if (tipoEl) tipoEl.value = gasto.tipo_movimiento;
+                    if (montoEl) montoEl.value = gasto.monto;
+                    if (catEl) catEl.value = gasto.categoria;
+                    if (fechaEl) fechaEl.value = gasto.fecha;
+                    if (descEl) descEl.value = gasto.descripcion;
 
-    if (formGasto) {
-        formGasto.addEventListener('submit', async (e) => {
-            e.preventDefault();
+                    idGastoEnEdicion = id;
+                    if (btnSubmit) btnSubmit.textContent = "💾 Guardar Cambios";
 
-            // Mapeo directo a los IDs exactos de tu HTML
-            const inputTipo = document.getElementById('tipoMovimiento');
-            const inputMonto = document.getElementById('monto');
-            const inputCat = document.getElementById('categoria');
-            const inputFecha = document.getElementById('fecha');
-            const inputDesc = document.getElementById('descripcion');
-            const inputComp = document.getElementById('comprobanteFile');
-
-            const tipo = inputTipo ? inputTipo.value : 'egreso';
-            const monto = inputMonto ? parseFloat(inputMonto.value) : NaN;
-            const categoria = inputCat ? inputCat.value : 'Varios';
-            const fecha = inputFecha ? inputFecha.value : new Date().toISOString().split('T')[0];
-            const descripcion = inputDesc ? inputDesc.value.trim() : '';
-
-            if (!descripcion || isNaN(monto) || monto <= 0 || !categoria) {
-                alert('Por favor, ingresa una descripción, un monto válido y selecciona una categoría.');
-                return;
-            }
-
-            const procesarYGuardar = async (comprobanteUrl = null) => {
-                await guardarTransaccionSQL(fecha, descripcion, monto, tipo, categoria, comprobanteUrl);
-                formGasto.reset();
-                if (inputFecha) inputFecha.valueAsDate = new Date(); // Resetear con la fecha de hoy
+                    mostrarAlertaCustom("Modificá los campos en el formulario y presioná 'Guardar Cambios'.", "✏️ Modo Edición");
+                }
             };
-
-            if (inputComp && inputComp.files && inputComp.files.length > 0) {
-                const reader = new FileReader();
-                reader.onload = async function (event) {
-                    await procesarYGuardar(event.target.result);
-                };
-                reader.readAsDataURL(inputComp.files[0]);
-            } else {
-                await procesarYGuardar();
-            }
         });
+
+        document.querySelectorAll('.btn-eliminar').forEach(btn => {
+            btn.onclick = async (e) => {
+                e.preventDefault();
+                const id = Number(e.currentTarget.getAttribute('data-id'));
+                await deshabilitarMovimientoSQL(id);
+                actualizarDashboard();
+            };
+        });
+
+        renderizarGraficos(egresosPorCat, totalIngresos, totalEgresos);
+    };
+
+    // 8. RENDERIZAR GRÁFICOS (CHART.JS)
+    const renderizarGraficos = (egresosPorCat, ingresos, egresos) => {
+        if (typeof Chart === 'undefined') return;
+
+        const modo = document.body.getAttribute('data-modo') || 'light';
+        const colorTexto = modo === 'dark' ? '#ffffff' : '#0f172a';
+
+        const canvasDona = document.getElementById('chartDona') || document.querySelectorAll('canvas')[0];
+        if (canvasDona) {
+            if (chartDona) chartDona.destroy();
+            const cats = Object.keys(egresosPorCat);
+            const vals = Object.values(egresosPorCat);
+
+            chartDona = new Chart(canvasDona, {
+                type: 'doughnut',
+                data: {
+                    labels: cats.length ? cats : ['Sin egresos'],
+                    datasets: [{
+                        data: vals.length ? vals : [1],
+                        backgroundColor: ['#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: colorTexto } } } }
+            });
+        }
+
+        const canvasBarras = document.getElementById('chartBarras') || document.querySelectorAll('canvas')[1];
+        if (canvasBarras) {
+            if (chartBarras) chartBarras.destroy();
+            chartBarras = new Chart(canvasBarras, {
+                type: 'bar',
+                data: {
+                    labels: ['Ingresos', 'Egresos'],
+                    datasets: [{ label: 'Monto ($)', data: [ingresos, egresos], backgroundColor: ['#10b981', '#ef4444'] }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: colorTexto } } },
+                    scales: { x: { ticks: { color: colorTexto } }, y: { ticks: { color: colorTexto } } }
+                }
+            });
+        }
+    };
+
+    // 9. PROCESAMIENTO DE REGISTRO
+    const procesarGuardadoGasto = async (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        const formGasto = document.getElementById('formGasto') || document.querySelector('form');
+        if (!formGasto) return;
+
+        const tipoEl = formGasto.querySelector('select');
+        const montoEl = formGasto.querySelector('input[type="number"]');
+        const catEl = document.getElementById('categoria') || formGasto.querySelectorAll('input[type="text"]')[0];
+        const fechaEl = formGasto.querySelector('input[type="date"]');
+        const descEl = document.getElementById('descripcion') || formGasto.querySelectorAll('input[type="text"]')[1];
+        const fileEl = formGasto.querySelector('input[type="file"]');
+        const btnSubmit = formGasto.querySelector('button');
+
+        const valMonto = montoEl ? parseFloat(montoEl.value) : 0;
+        const valFecha = fechaEl ? fechaEl.value.trim() : '';
+        const valCat = catEl ? catEl.value.trim() : '';
+        const valDesc = descEl ? descEl.value.trim() : '';
+
+        if (isNaN(valMonto) || valMonto <= 0) {
+            mostrarAlertaCustom("Por favor ingresá un monto mayor a 0.");
+            return;
+        }
+        if (!valFecha) {
+            mostrarAlertaCustom("Por favor seleccioná la fecha del movimiento.");
+            return;
+        }
+        if (!valCat) {
+            mostrarAlertaCustom("Por favor ingresá la categoría del movimiento.");
+            return;
+        }
+        if (!valDesc) {
+            mostrarAlertaCustom("Por favor ingresá una descripción.");
+            return;
+        }
+
+        let urlTicket = await subirComprobanteAPI(fileEl);
+
+        if (idGastoEnEdicion) {
+            const movEditado = {
+                id: idGastoEnEdicion,
+                tipo_movimiento: tipoEl ? tipoEl.value.toLowerCase() : 'egreso',
+                monto: Number(valMonto),
+                categoria: valCat,
+                fecha: valFecha,
+                descripcion: valDesc,
+                url_comprobante: urlTicket
+            };
+            await actualizarMovimientoSQL(movEditado);
+            idGastoEnEdicion = null;
+            if (btnSubmit) btnSubmit.textContent = "Registrar Movimiento";
+            mostrarAlertaCustom("¡Movimiento actualizado correctamente!", "💾 Guardado Exitoso");
+        } else {
+            const nuevoMov = {
+                id: Date.now(),
+                email_usuario: usuarioActivo,
+                tipo_movimiento: tipoEl ? tipoEl.value.toLowerCase() : 'egreso',
+                monto: Number(valMonto),
+                categoria: valCat,
+                fecha: valFecha,
+                descripcion: valDesc,
+                url_comprobante: urlTicket,
+                estado_activo: true
+            };
+            await insertarMovimientoSQL(nuevoMov);
+            mostrarAlertaCustom("¡Movimiento registrado correctamente!", "🎉 Registro Exitoso");
+        }
+
+        if (montoEl) montoEl.value = '';
+        if (descEl) descEl.value = '';
+        if (catEl) catEl.value = '';
+        if (fileEl) fileEl.value = '';
+
+        actualizarDashboard();
+    };
+
+    // 10. EVENTOS DEL FORMULARIO Y MODAL DE LOGOUT
+    const formEl = document.getElementById('formGasto') || document.querySelector('form');
+    if (formEl) {
+        formEl.onsubmit = procesarGuardadoGasto;
+        const btnGuardar = formEl.querySelector('button');
+        if (btnGuardar) btnGuardar.onclick = procesarGuardadoGasto;
     }
 
-    // Inicialización general
-    inicializarGraficos();
-    await initSQLite();
+    const btnAbandonar = document.getElementById('btnAbandonar') || document.getElementById('btnLogout') || document.querySelector('.btn-danger');
+    const modalLogout = document.getElementById('modalLogoutCustom');
+    const btnAceptarLogout = document.getElementById('btnAceptarLogoutCustom');
+    const btnCancelarLogout = document.getElementById('btnCancelarLogoutCustom');
+
+    if (btnAbandonar) {
+        btnAbandonar.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const selectTema = document.getElementById('selectorTema') || document.querySelectorAll('select')[0];
+            const textoTemaSelect = selectTema ? selectTema.options[selectTema.selectedIndex].text.toLowerCase() : '';
+            const temaAttr = document.body.getAttribute('data-tema') || '';
+            const esOnePiece = textoTemaSelect.includes('piece') || temaAttr === 'one-piece';
+
+            if (modalLogout) {
+                const tituloModal = modalLogout.querySelector('.modal-titulo');
+                const mensajeModal = modalLogout.querySelector('.modal-mensaje');
+
+                if (esOnePiece) {
+                    if (tituloModal) tituloModal.textContent = "⚓ ¡Atención Capitán!";
+                    if (mensajeModal) mensajeModal.textContent = "¿Estás seguro de que deseas abandonar el barco y cerrar sesión?";
+                    if (btnAceptarLogout) btnAceptarLogout.textContent = "Sí, Abandonar";
+                } else {
+                    if (tituloModal) tituloModal.textContent = "🔐 Cerrar Sesión";
+                    if (mensajeModal) mensajeModal.textContent = "¿Estás seguro de que deseas salir del sistema?";
+                    if (btnAceptarLogout) btnAceptarLogout.textContent = "Sí, Salir";
+                }
+
+                modalLogout.style.display = 'flex';
+            } else if (confirm("¿Deseas cerrar sesión?")) {
+                localStorage.removeItem('sgg_usuario_activo');
+                window.location.href = 'index.html';
+            }
+        };
+    }
+
+    if (btnAceptarLogout) {
+        btnAceptarLogout.onclick = (e) => {
+            e.preventDefault();
+            localStorage.removeItem('sgg_usuario_activo');
+            window.location.href = 'index.html';
+        };
+    }
+
+    if (btnCancelarLogout) {
+        btnCancelarLogout.onclick = (e) => {
+            e.preventDefault();
+            if (modalLogout) modalLogout.style.display = 'none';
+        };
+    }
+
+    window.addEventListener('cambioTemaModo', actualizarDashboard);
+
+    // INICIAR SECUENCIA
+    await initSQLiteDB();
+    actualizarDashboard();
 });

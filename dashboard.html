@@ -3,64 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGG - Tesorería del Grand Line 🏴‍☠️</title>
-    <link rel="icon" type="image/png" href="assets/img/favicon.png">
+    <title>PMV- Panel de Control</title>
     <link rel="stylesheet" href="css/styles.css">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="one-piece-theme">
+<body class="one-piece-theme dashboard-page" data-tema="one-piece" data-modo="light">
 
-    <header class="navbar">
-        <div class="brand">
-            <img src="assets/img/logo-jolly-roger.png" alt="Jolly Roger" class="nav-logo" onerror="this.style.display='none'">
-            <h2>Grand Line Expenses</h2>
+    <header class="navbar" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 30px;">
+        <div class="brand" style="display: flex; align-items: center; gap: 12px;">
+            <img src="assets/img/luffy - Editado.png" alt="Logo" class="auth-logo-inline txt-onepiece" style="max-height: 40px;" onerror="this.style.display='none'">
+            <h2 style="margin: 0;">
+                <span class="txt-onepiece">Grand Line Expenses</span>
+                <span class="txt-normal">Control de Gastos</span>
+            </h2>
         </div>
-        <span id="userEmailDisplay" class="link">pirata@grandline.com</span>
-        <div class="user-controls">
-            <button id="btnTema" class="btn-theme">Modo Sol / Noche</button>
-            <button id="btnLogout" class="btn-delete">Cerrar Sesión</button>
+
+        <span id="userEmailDisplay" class="link">usuario@correo.com</span>
+        <span id="dolarDisplay" style="margin-left: 15px; background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 3px 8px; border-radius: 6px; font-weight: bold; font-size: 0.9rem;">💵 USD Oficial: Cargando...</span>
+        <div class="user-controls" style="display: flex; align-items: center; gap: 12px;">
+            <select id="selectTemaEstilo" class="select-tema">
+                <option value="one-piece">One Piece</option>
+                <option value="normal">Normal</option>
+            </select>
+
+            <button id="btnTemaModo" class="btn-theme">☀️ / 🌙</button>
+
+            <button id="btnLogout" class="btn-delete">
+                <span class="txt-onepiece">⚓ Abandonar Barco</span>
+                <span class="txt-normal">🚪 Cerrar Sesión</span>
+            </button>
         </div>
     </header>
 
-    <h1 class="titulo-principal">🏴‍☠️ Bitácora y Tesorería de la Tripulación</h1>
+    <h1 class="titulo-principal" style="text-align: center; margin: 20px 0;">
+        <span class="txt-onepiece">📜 Bitácora y Tesorería de la Tripulación</span>
+        <span class="txt-normal">📊 Panel de Control y Gestión Financiera</span>
+    </h1>
 
     <main class="dashboard-container">
-        
+
         <section class="summary-card">
-            <h3>💰 Botín Acumulado (Balance General)</h3>
+            <h3>
+                <span class="txt-onepiece">💰 Botín Acumulado (Balance General)</span>
+                <span class="txt-normal">💵 Balance General Disponible</span>
+            </h3>
             <div class="monto-total">$<span id="totalGastado">0.00</span></div>
         </section>
 
         <section class="form-card">
-            <h3>📝 Registrar Movimiento en el Libro de Bordo</h3>
+            <h3>
+                <span class="txt-onepiece">📝 Registrar Movimiento en el Libro de Bordo</span>
+                <span class="txt-normal">📝 Registrar Nuevo Movimiento</span>
+            </h3>
+            
             <form id="formGasto">
                 <input type="hidden" id="gastoId">
 
                 <div class="form-group">
-                    <label for="tipoMovimiento">Tipo de Movimiento</label>
+                    <label for="tipoMovimiento">
+                        <span class="txt-onepiece">Tipo de Movimiento</span>
+                        <span class="txt-normal">Tipo de Transacción</span>
+                    </label>
                     <select id="tipoMovimiento" required>
-                        <option value="egreso" selected>🔴 Egreso (Gasto de la Tripulación)</option>
-                        <option value="ingreso">🟢 Ingreso (Tesoro / Botín)</option>
+                        <option value="egreso" selected>🔴 Egreso</option>
+                        <option value="ingreso">🟢 Ingreso</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="monto">Monto (Bellys / $)</label>
+                    <label for="monto">
+                        <span class="txt-onepiece">Monto (Bellys / $)</span>
+                        <span class="txt-normal">Monto ($)</span>
+                    </label>
                     <input type="number" id="monto" placeholder="Ej: 1500" step="0.01" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="categoria">Categoría</label>
+                    <label for="categoria">
+                        <span class="txt-onepiece">Categoría del Botín</span>
+                        <span class="txt-normal">Categoría</span>
+                    </label>
                     <select id="categoria" required>
                         <option value="" disabled selected>Seleccioná una categoría</option>
-                        <option value="Comida">🍖 Comida</option>
-                        <option value="Navegación">⚓ Ahorro / Fondo para Imprevistos</option>
-                        <option value="Medicina">💊 Suministros Médicos </option>
-                        <option value="Entretenimiento">🎵 Salidas</option>
-                        <option value="Mapas">📚 Facultad y Cursos</option>
-                        <option value="Tesoro">💎 Botín / Salarios</option>
-                        <option value="Varios">📌 Varios</option>
+                        <option value="Comida">🍖 Alimentos y Suministros</option>
+                        <option value="Navegación">⚓ Ahorro / Fondo de Emergencia</option>
+                        <option value="Medicina">💊 Salud y Medicina</option>
+                        <option value="Entretenimiento">🎵 Entretenimiento y Salidas</option>
+                        <option value="Mapas">📚 Educación y Capacitación</option>
+                        <option value="Tesoro">💎 Ingresos y Salarios</option>
+                        <option value="Varios">📌 Gastos Varios</option>
                     </select>
                 </div>
 
@@ -70,32 +102,55 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="descripcion">Descripción</label>
+                    <label for="descripcion">
+                        <span class="txt-onepiece">Descripción del Movimiento</span>
+                        <span class="txt-normal">Descripción</span>
+                    </label>
                     <input type="text" id="descripcion" placeholder="Ej: Banquete en Water 7" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="comprobanteFile">Comprobante / Ticket (Opcional)</label>
+                    <label for="comprobanteFile">
+                        <span class="txt-onepiece">Mapa / Ticket de Comprobante (Opcional)</span>
+                        <span class="txt-normal">Comprobante / Adjunto (Opcional)</span>
+                    </label>
                     <input type="file" id="comprobanteFile" accept="image/*">
                 </div>
 
-                <button type="submit" id="btnGuardar" class="btn-primary">Guardar en la Bitácora</button>
+                <button type="submit" id="btnGuardar" class="btn-primary">
+                    <span class="txt-onepiece">⚔️ Guardar en la Bitácora</span>
+                    <span class="txt-normal">💾 Guardar Registro</span>
+                </button>
             </form>
         </section>
 
         <section class="charts-section">
             <div class="chart-card">
-                <h3>📊 Distribución de Egresos por Categoría</h3>
-                <canvas id="chartDona"></canvas>
+                <h3>
+                    <span class="txt-onepiece">📊 Distribución de Egresos por Categoría</span>
+                    <span class="txt-normal">📊 Gastos por Categoría</span>
+                </h3>
+                <div class="chart-container">
+                    <canvas id="chartDona"></canvas>
+                </div>
             </div>
+
             <div class="chart-card">
-                <h3>⚖️ Comparativa: Ingresos vs. Egresos</h3>
-                <canvas id="chartBarras"></canvas>
+                <h3>
+                    <span class="txt-onepiece">⚖️ Comparativa: Ingresos vs. Egresos</span>
+                    <span class="txt-normal">⚖️ Comparativa: Ingresos vs. Gastos</span>
+                </h3>
+                <div class="chart-container">
+                    <canvas id="chartBarras"></canvas>
+                </div>
             </div>
         </section>
 
         <section class="table-card">
-            <h3>📜 Historial del Cofre del Tesoro</h3>
+            <h3>
+                <span class="txt-onepiece">📜 Historial del Cofre del Tesoro</span>
+                <span class="txt-normal">📋 Historial de Transacciones</span>
+            </h3>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -117,16 +172,81 @@
 
     <div id="modalConfirmar" class="modal" style="display: none;">
         <div class="modal-content">
-            <h3>🏴‍☠️ ¿Confirmar la eliminación?</h3>
-            <p>El registro será desactivado del historial activo pero conservado en la base de datos.</p>
+            <h3>
+                <span class="txt-onepiece">¿Confirmar la eliminación?</span>
+                <span class="txt-normal">⚠️ ¿Eliminar registro?</span>
+            </h3>
+            <p>
+                <span class="txt-onepiece">El registro será arrojado al mar (desactivado del historial).</span>
+                <span class="txt-normal">El registro será eliminado del historial activo.</span>
+            </p>
             <div class="modal-buttons">
-                <button id="btnAceptarEliminar" class="btn-danger">Arrojar al mar (Eliminar)</button>
+                <button id="btnAceptarEliminar" class="btn-danger">
+                    <span class="txt-onepiece">Arrojar al mar (Eliminar)</span>
+                    <span class="txt-normal">Confirmar Eliminación</span>
+                </button>
                 <button id="btnCancelarEliminar" class="btn-secondary">Cancelar</button>
             </div>
         </div>
     </div>
 
+    <div id="customModal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <h3 id="modalTitle">
+                <span class="txt-onepiece">🏴‍☠️ Mensaje de la Tripulación</span>
+                <span class="txt-normal">⚠️ Notificación del Sistema</span>
+            </h3>
+            <p id="modalMessage"></p>
+            <button id="modalCloseBtn" class="btn-ingresar" style="margin-top: 15px; width: 100%;">
+                <span class="txt-onepiece">Entendido, Capitán</span>
+                <span class="txt-normal">Aceptar</span>
+            </button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script src="js/koo.js"></script>
     <script src="js/gastos.js"></script>
+<div id="modalCerrarSesion" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+        <h3>
+            <span class="txt-onepiece">🏴‍☠️ ¿Abandonar el Barco?</span>
+            <span class="txt-normal">🚪 Confirmar Cierre de Sesión</span>
+        </h3>
+        <p>
+            <span class="txt-onepiece">¿Estás seguro de que quieres desembarcar y salir de la tesorería?</span>
+            <span class="txt-normal">¿Estás seguro de que deseas cerrar sesión?</span>
+        </p>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="btnAceptarLogout" class="btn-primary" style="flex: 1; background-color: #ef4444;">
+                <span class="txt-onepiece">Sí, desembarcar</span>
+                <span class="txt-normal">Cerrar Sesión</span>
+            </button>
+            <button id="btnCancelarLogout" class="btn-secondary" style="flex: 1;">
+                <span class="txt-onepiece">Quedarme a bordo</span>
+                <span class="txt-normal">Cancelar</span>
+            </button>
+        </div>
+    </div>
+</div>
+<div id="modalLogoutCustom" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+        <h3 class="modal-titulo">⚓ ¡Atención Capitan!</h3>
+        <p class="modal-mensaje">¿Estás seguro de que deseas abandonar el barco y cerrar sesión?</p>
+        <div class="modal-acciones">
+            <button id="btnAceptarLogoutCustom" class="btn-modal btn-confirmar">Sí, Abandonar</button>
+            <button id="btnCancelarLogoutCustom" class="btn-modal btn-cancelar">Cancelar</button>
+        </div>
+    </div>
+</div>
+<div id="modalAlertaCustom" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+        <h3 id="modalAlertaTitulo" class="modal-titulo">⚠️ Aviso del Navegante</h3>
+        <p id="modalAlertaMensaje" class="modal-mensaje">Mensaje de advertencia...</p>
+        <div class="modal-acciones">
+            <button id="btnAceptarAlertaCustom" class="btn-modal btn-cancelar">Aceptar</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
