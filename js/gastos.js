@@ -1,8 +1,3 @@
-/* ==========================================================================
-   SISTEMA DE GESTIÓN DE GASTOS (SGG) - VERSIÓN INTEGRAL CORREGIDA
-   SQLite + OPFS + Chart.js + Modales Tematizados + Edición de Registros
-   ========================================================================== */
-
 document.addEventListener('DOMContentLoaded', async () => {
 
     let db = null;
@@ -12,7 +7,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const IMGBB_API_KEY = 'c38a2e0a2948b8c2d2572b123652a281';
 
-    // 1. SESIÓN ACTIVA Y AISLAMIENTO
     let usuarioActivo = localStorage.getItem('sgg_usuario_activo') || 'chopper@gmail.com';
     localStorage.setItem('sgg_usuario_activo', usuarioActivo);
 
@@ -21,7 +15,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const nombreArchivoDB = `sgg_database_${usuarioActivo.replace(/[^a-zA-Z0-9]/g, '_')}.sqlite`;
 
-    // 2. MODAL DE ALERTAS TEMATIZADO
     const mostrarAlertaCustom = (mensaje, tituloOverride = null) => {
         const modal = document.getElementById('modalAlertaCustom');
         const txtTitulo = document.getElementById('modalAlertaTitulo');
@@ -47,7 +40,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // 3. OPFS (STORAGE BINARIO)
     const cargarDesdeOPFS = async () => {
         try {
             const root = await navigator.storage.getDirectory();
@@ -74,7 +66,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // 4. INICIALIZAR SQLITE WASM
     const initSQLiteDB = async () => {
         try {
             const SQL = await initSqlJs({
@@ -110,7 +101,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // 5. CONSULTAS SQL
     const obtenerMovimientosSQL = () => {
         if (!db) return [];
         try {
@@ -204,7 +194,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await guardarEnOPFS();
     };
 
-    // 6. SUBIDA A IMGBB
     const subirComprobanteAPI = async (fileInput) => {
         if (!fileInput || !fileInput.files || fileInput.files.length === 0) return null;
         try {
@@ -221,7 +210,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // 7. RENDERIZADO DEL DASHBOARD
     const actualizarDashboard = () => {
         const movimientos = obtenerMovimientosSQL();
         console.log("📊 Movimientos cargados desde SQLite:", movimientos);
@@ -276,7 +264,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             balanceEl.style.color = balance >= 0 ? '#10b981' : '#ef4444';
         }
 
-        // BINDINGS DE EDICIÓN Y ELIMINACIÓN EN TABLA
         document.querySelectorAll('.btn-editar').forEach(btn => {
             btn.onclick = (e) => {
                 e.preventDefault();
@@ -318,7 +305,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarGraficos(egresosPorCat, totalIngresos, totalEgresos);
     };
 
-    // 8. RENDERIZAR GRÁFICOS (CHART.JS)
     const renderizarGraficos = (egresosPorCat, ingresos, egresos) => {
         if (typeof Chart === 'undefined') return;
 
@@ -363,7 +349,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // 9. PROCESAMIENTO DE REGISTRO
     const procesarGuardadoGasto = async (e) => {
         if (e) {
             e.preventDefault();
@@ -443,7 +428,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         actualizarDashboard();
     };
 
-    // 10. EVENTOS DEL FORMULARIO Y MODAL DE LOGOUT
     const formEl = document.getElementById('formGasto') || document.querySelector('form');
     if (formEl) {
         formEl.onsubmit = procesarGuardadoGasto;
@@ -505,7 +489,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.addEventListener('cambioTemaModo', actualizarDashboard);
 
-    // INICIAR SECUENCIA
     await initSQLiteDB();
     actualizarDashboard();
 });

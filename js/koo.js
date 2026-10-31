@@ -1,13 +1,5 @@
-/* ==========================================================================
-   MÓDULO GLOBAL: AUTENTICACIÓN, TEMAS Y API REST (js/koo.js)
-   ========================================================================== */
-
 document.addEventListener('DOMContentLoaded', () => {
 
-    // ----------------------------------------------------------------------
-    // 1. AUTENTICACIÓN Y INICIO DE SESIÓN SIN RECARGA DE PÁGINA
-    // ----------------------------------------------------------------------
-    // Recupera la sesión activa o asigna 'chopper@gmail.com' por defecto si no existe
     let usuarioGuardado = localStorage.getItem('sgg_usuario_activo');
     if (!usuarioGuardado) {
         usuarioGuardado = 'chopper@gmail.com';
@@ -19,11 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
         userEmailDisplay.textContent = usuarioGuardado;
     }
 
-    // Capturar cualquier formulario de login o registro en index.html
     const formLogin = document.querySelector('form:not(#formGasto)');
     if (formLogin) {
         formLogin.addEventListener('submit', (e) => {
-            e.preventDefault(); // Detiene el refresco nativo del navegador
+            e.preventDefault(); 
 
             const emailInput = document.getElementById('email') || document.querySelector('input[type="email"]');
             
@@ -31,17 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? emailInput.value.trim().toLowerCase() 
                 : 'chopper@gmail.com';
 
-            // Guardar identificador para aislar la base SQLite en OPFS
             localStorage.setItem('sgg_usuario_activo', userEmail);
 
-            // Redirección controlada al dashboard
             window.location.href = 'dashboard.html';
         });
     }
 
-    // ----------------------------------------------------------------------
-    // 2. MODO DÍA / NOCHE Y TEMAS VISUALES
-    // ----------------------------------------------------------------------
     const aplicarTemaYModo = () => {
         const temaEstilo = localStorage.getItem('sgg_tema_estilo') || 'one-piece';
         const modoLuz = localStorage.getItem('sgg_modo_luz') || 'light';
@@ -88,9 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ----------------------------------------------------------------------
-    // 3. CONSUMO ASINCRÓNICO API REST EXTERNA (DÓLAR EN TIEMPO REAL)
-    // ----------------------------------------------------------------------
     const obtenerCotizacionDolar = async () => {
         const dolarEl = document.getElementById('dolarDisplay');
         if (!dolarEl) return;
@@ -110,13 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
     obtenerCotizacionDolar();
 });
 
-/* ==========================================================================
-   GESTIÓN DE AUTENTICACIÓN Y VISIBILIDAD DE CONTRASEÑA (LOGIN)
-   ========================================================================== */
-
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Selector del campo de contraseña y del botón
     const inputPass = document.getElementById('password') || document.querySelector('input[type="password"]');
     const btnToggle = document.getElementById('btnMostrarPassword') || document.getElementById('togglePassword') || document.querySelector('.mostrar-contrasena');
 
@@ -126,10 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const esPassword = inputPass.type === 'password';
             
-            // Alternar visibilidad del input
             inputPass.type = esPassword ? 'text' : 'password';
-            
-            // Actualizar texto e icono del botón
+        
             btnToggle.innerHTML = esPassword ? 'Ocultar contraseña' : '👁️ Mostrar contraseña';
         });
     }

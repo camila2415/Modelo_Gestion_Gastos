@@ -1,6 +1,3 @@
-/* ==========================================
-   1. VARIABLES Y TEMA BASE (GRAND LINE)
-   ========================================== */
 :root {
   --ocean-blue-dark: #0a192f;
   --ocean-blue-main: #172a45;
@@ -37,9 +34,6 @@ body.dark-mode {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* ==========================================
-   2. FONDOS DINÁMICOS DE GOING MERRY
-   ========================================== */
 body, body.one-piece-theme {
   min-height: 100vh;
   color: var(--text-dark);
@@ -58,9 +52,6 @@ body.dark-mode {
   background-size: cover;
 }
 
-/* ==========================================
-   3. ESTRUCTURA DE PÁGINA Y NAVEGACIÓN
-   ========================================== */
 .navbar {
   background: rgba(10, 25, 47, 0.85);
   backdrop-filter: blur(8px);
@@ -124,9 +115,6 @@ body.dark-mode {
   margin-bottom: 15px;
 }
 
-/* ==========================================
-   4. TARJETAS DE LOGIN Y DASHBOARD
-   ========================================== */
 .auth-page {
   display: flex;
   flex-direction: column;
@@ -179,9 +167,6 @@ body.dark-mode .login-card h2 {
   margin-top: 10px;
 }
 
-/* ==========================================
-   5. BOTONES E INPUTS
-   ========================================== */
 button {
   cursor: pointer;
   border: none;
@@ -290,9 +275,6 @@ button {
   text-decoration: underline;
 }
 
-/* ==========================================
-   6. MODO NOCHE - INPUTS Y NAVEGACIÓN
-   ========================================== */
 body.dark-mode input[type="text"],
 body.dark-mode input[type="email"],
 body.dark-mode input[type="password"],
@@ -321,9 +303,6 @@ body.dark-mode .link {
   color: #38bdf8 !important;
 }
 
-/* ==========================================
-   7. SECCIÓN DE GRÁFICOS (SOL / NOCHE)
-   ========================================== */
 .charts-section {
   display: flex;
   gap: 20px;
@@ -337,7 +316,6 @@ body.dark-mode .link {
   width: 100%;
 }
 
-/* Modo Sol: Blanco Limpio */
 .chart-card {
   flex: 1;
   min-width: 300px;
@@ -355,7 +333,6 @@ body.dark-mode .link {
   margin-bottom: 15px;
 }
 
-/* Modo Noche: Oscuro */
 body.dark-mode .chart-card {
   background-color: #0f172a !important;
   color: #f8fafc !important;
@@ -366,9 +343,6 @@ body.dark-mode .chart-card h3 {
   color: #f8fafc !important;
 }
 
-/* ==========================================
-   8. TABLAS Y MODAL
-   ========================================== */
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -413,11 +387,7 @@ body.dark-mode .data-table td {
   max-width: 400px;
   text-align: center;
 }
-/* ==========================================
-   SISTEMA DE MÚLTIPLES TEMAS (NORMAL Y ONE PIECE)
-   ========================================== */
 
-/* 1. MODO NORMAL (DÍA) */
 body[data-tema="normal"][data-modo="light"] {
     background: #f1f5f9 !important;
     color: #0f172a !important;
@@ -433,7 +403,6 @@ body[data-tema="normal"][data-modo="light"] .table-card {
     color: #0f172a !important;
 }
 
-/* 2. MODO NORMAL (NOCHE) */
 body[data-tema="normal"][data-modo="dark"] {
     background: #0f172a !important;
     color: #f8fafc !important;
@@ -449,7 +418,6 @@ body[data-tema="normal"][data-modo="dark"] .table-card {
     color: #f8fafc !important;
 }
 
-/* Estilo para el menú desplegable del tema */
 .select-tema {
     padding: 6px 12px !important;
     border-radius: 10px !important;
@@ -461,11 +429,7 @@ body[data-tema="normal"][data-modo="dark"] .table-card {
     cursor: pointer !important;
     outline: none !important;
 }
-/* ==========================================
-   TEMA NORMAL (MODO DÍA Y MODO NOCHE)
-   ========================================== */
 
-/* 1. Modo Normal - Día */
 body[data-tema="normal"][data-modo="light"] {
     background: #f1f5f9 !important;
     color: #0f172a !important;
@@ -494,7 +458,6 @@ body[data-tema="normal"][data-modo="light"] .chart-card {
     color: #0f172a !important;
 }
 
-/* 2. Modo Normal - Noche */
 body[data-tema="normal"][data-modo="dark"] {
     background: #0f172a !important;
     color: #f8fafc !important;
@@ -522,11 +485,7 @@ body[data-tema="normal"][data-modo="dark"] .chart-card {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
     color: #f8fafc !important;
 }
-/* ==========================================
-   OCULTAR Y MOSTRAR TEXTOS SEGÚN EL TEMA
-   ========================================== */
 
-/* Por defecto: Ocultar textos normales si no estamos en modo normal */
 .txt-normal {
     display: none !important;
 }
@@ -535,7 +494,6 @@ body[data-tema="normal"][data-modo="dark"] .chart-card {
     display: inline !important;
 }
 
-/* Cuando el usuario selecciona "Normal": Ocultar pirata y mostrar normal */
 body[data-tema="normal"] .txt-onepiece {
     display: none !important;
 }
@@ -543,32 +501,24 @@ body[data-tema="normal"] .txt-onepiece {
 body[data-tema="normal"] .txt-normal {
     display: inline !important;
 }
-/* ==========================================
-   COLOR DE SUBTÍTULO PARA MODO NORMAL
-   ========================================== */
 
-/* Subtítulo en Modo Normal (Día) */
 body[data-tema="normal"][data-modo="light"] .subtitulo-pirata {
-    color: #475569 !important; /* Gris oscuro legible */
-    text-shadow: none !important; /* Quita el resplandor o sombra blanca que traía de One Piece */
-}
-
-/* Subtítulo en Modo Normal (Noche) */
-body[data-tema="normal"][data-modo="dark"] .subtitulo-pirata {
-    color: #94a3b8 !important; /* Gris claro para fondo oscuro */
+    color: #475569 !important; 
     text-shadow: none !important;
 }
 
-/* ==========================================
-   LOGO EN LÍNEA AL COSTADO DEL TÍTULO
-   ========================================== */
+body[data-tema="normal"][data-modo="dark"] .subtitulo-pirata {
+    color: #94a3b8 !important; 
+    text-shadow: none !important;
+}
+
 .auth-logo-inline {
     width: 40px !important;
     height: 40px !important;
     object-fit: contain !important;
     display: inline-block !important;
     margin: 0 !important;
-}/* Estilos para el Modal / Cartel de Alerta */
+}
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -595,24 +545,18 @@ body[data-tema="normal"][data-modo="dark"] .subtitulo-pirata {
     border: 2px solid #e2e8f0;
 }
 
-/* Modo Noche Normal */
 body[data-tema="normal"][data-modo="dark"] .modal-card {
     background-color: #1e293b;
     color: #f8fafc;
     border-color: #334155;
 }
 
-/* Tema One Piece */
 body[data-tema="one-piece"] .modal-card {
     background-color: #1c1917;
     color: #fef08a;
     border: 2px solid #f59e0b;
     box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
 }
-
-/* ==========================================================================
-   ESTILOS GENERALES DE MODALES TEMATIZADOS (ALERTAS Y CERRAR SESIÓN)
-   ========================================================================== */
 
 .modal-overlay {
     position: fixed;
@@ -671,9 +615,6 @@ body[data-tema="one-piece"] .modal-card {
     opacity: 0.9;
 }
 
-/* --------------------------------------------------------------------------
-   1. PALETA TEMA ONE PIECE
-   -------------------------------------------------------------------------- */
 body[data-tema="one-piece"] .modal-box {
     background-color: #1e293b;
     color: #f8fafc;
@@ -691,9 +632,6 @@ body[data-tema="one-piece"] #btnAceptarAlertaCustom {
     color: #0f172a;
 }
 
-/* --------------------------------------------------------------------------
-   2. PALETA TEMA NORMAL - MODO CLARO (LIGHT)
-   -------------------------------------------------------------------------- */
 body[data-modo="light"]:not([data-tema="one-piece"]) .modal-box,
 body[data-tema="normal"][data-modo="light"] .modal-box {
     background-color: #ffffff;
@@ -715,9 +653,6 @@ body[data-tema="normal"][data-modo="light"] #btnAceptarAlertaCustom {
     color: #ffffff;
 }
 
-/* --------------------------------------------------------------------------
-   3. PALETA TEMA NORMAL - MODO OSCURO (DARK)
-   -------------------------------------------------------------------------- */
 body[data-modo="dark"]:not([data-tema="one-piece"]) .modal-box,
 body[data-tema="normal"][data-modo="dark"] .modal-box {
     background-color: #0f172a;
