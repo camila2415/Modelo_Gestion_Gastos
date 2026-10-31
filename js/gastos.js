@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let chartDona = null;
     let chartBarras = null;
     let idGastoEnEdicion = null;
+    let idGastoAEliminar = null;
 
     const IMGBB_API_KEY = 'c38a2e0a2948b8c2d2572b123652a281';
 
@@ -239,7 +240,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const cat = m.categoria || 'Varios';
                 egresosPorCat[cat] = (egresosPorCat[cat] || 0) + monto;
             }
-
             if (tablaBody) {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -250,8 +250,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td style="font-weight:bold; color:${esIngreso ? '#10b981' : '#ef4444'}">${esIngreso ? '+' : '-'}$${monto.toFixed(2)}</td>
                     <td>${m.url_comprobante ? `<a href="${m.url_comprobante}" target="_blank" style="color:#3b82f6;">📎 Ticket</a>` : 'Sin ticket'}</td>
                     <td>
-                        <button class="btn-editar" data-id="${m.id}" style="cursor:pointer; padding:2px 6px; margin-right:4px;">✏️</button>
-                        <button class="btn-eliminar" data-id="${m.id}" style="cursor:pointer; padding:2px 6px;">🗑️</button>
+                        <button type="button" class="btn-editar" data-id="${m.id}" style="cursor:pointer; padding:2px 6px; margin-right:4px;">✏️</button>
+                        <button type="button" class="btn-eliminar" data-id="${m.id}" style="cursor:pointer; padding:2px 6px;">🗑️</button>
                     </td>
                 `;
                 tablaBody.appendChild(tr);
@@ -269,7 +269,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 e.preventDefault();
                 const id = Number(e.currentTarget.getAttribute('data-id'));
                 const gasto = movimientos.find(item => item.id === id);
-
                 if (gasto) {
                     const formGasto = document.getElementById('formGasto') || document.querySelector('form');
                     const tipoEl = formGasto.querySelector('select');
@@ -293,17 +292,53 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
         });
 
-        document.querySelectorAll('.btn-eliminar').forEach(btn => {
-            btn.onclick = async (e) => {
+        document.querySelectorAll('.btn-eliminar, .btn-eliminar-gasto').forEach(btn => {
+            btn.onclick = (e) => {
                 e.preventDefault();
-                const id = Number(e.currentTarget.getAttribute('data-id'));
-                await deshabilitarMovimientoSQL(id);
-                actualizarDashboard();
+                e.stopPropagation();
+
+                idGastoAEliminar = Number(e.currentTarget.getAttribute('data-id'));
+
+                const modalConfirmar = document.getElementById('modalConfirmar');
+                if (modalConfirmar) {
+                    modalConfirmar.style.display = 'flex';
+                }
             };
         });
 
         renderizarGraficos(egresosPorCat, totalIngresos, totalEgresos);
     };
+
+    const btnAceptarEliminar = document.getElementById('btnAceptarEliminar');
+    const btnCancelarEliminar = document.getElementById('btnCancelarEliminar');
+
+    if (btnAceptarEliminar) {
+        btnAceptarEliminar.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (idGastoAEliminar) {
+                await deshabilitarMovimientoSQL(idGastoAEliminar);
+                idGastoAEliminar = null;
+
+                const modalConfirmar = document.getElementById('modalConfirmar');
+                if (modalConfirmar) modalConfirmar.style.display = 'none';
+
+                actualizarDashboard();
+                mostrarAlertaCustom("El gasto ha sido arrojado al mar exitosamente.", "🌊 Gasto Eliminado");
+            }
+        };
+    }
+
+    if (btnCancelarEliminar) {
+        btnCancelarEliminar.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            idGastoAEliminar = null;
+            const modalConfirmar = document.getElementById('modalConfirmar');
+            if (modalConfirmar) modalConfirmar.style.display = 'none';
+        };
+    }
 
     const renderizarGraficos = (egresosPorCat, ingresos, egresos) => {
         if (typeof Chart === 'undefined') return;

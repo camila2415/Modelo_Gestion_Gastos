@@ -53,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let intentosFallidos = 0;
     let tiempoBloqueoHasta = null;
-
     const formLogin = document.getElementById('formLogin') || document.querySelector('.auth-page form');
 
     if (formLogin && !esPaginaRegistro && !esPaginaRecuperar) {
@@ -90,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem(`sgg_pass_${emailVal}`, passVal);
                 usuarioValido = true;
             }
-
             if (usuarioValido) {
                 intentosFallidos = 0;
                 tiempoBloqueoHasta = null;
@@ -133,7 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const tieneMinuscula = /[a-z]/.test(passVal);
             const tieneNumero = /[0-9]/.test(passVal);
             const tieneSimbolo = /[^A-Za-z0-9]/.test(passVal);
-
             const listaItems = document.querySelectorAll('.auth-page ul li, form ul li');
 
             listaItems.forEach(item => {
@@ -233,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         " title="Mostrar/Ocultar clave">👁️</button>
                     </div>
 
-                    <!-- Lista de Requisitos de Clave con Tildes -->
                     <ul id="listaReqModal" style="
                         text-align: left; font-size: 0.8rem; padding-left: 15px; margin: 10px 0 15px 0;
                         list-style-type: none; line-height: 1.5; color: #e74c3c;
@@ -282,7 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const minus = /[a-z]/.test(val);
             const num = /[0-9]/.test(val);
             const sim = /[^A-Za-z0-9]/.test(val);
-
             const setReq = (elemId, cumple, texto) => {
                 const el = document.getElementById(elemId);
                 if (el) {
@@ -396,7 +391,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const formPadre = btn.closest('form') || document;
                 inputPass = formPadre.querySelector('input[type="password"], input[type="text"]');
             }
-
             if (inputPass) {
                 const esPassword = inputPass.getAttribute('type') === 'password';
                 inputPass.setAttribute('type', esPassword ? 'text' : 'password');
@@ -471,4 +465,81 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     obtenerCotizacionDolar();
+
+    // ==========================================
+    // MANEJO DEL MODAL DE ELIMINACIÓN (#modalConfirmar)
+    // ==========================================
+    let idGastoAEliminar = null;
+
+    // Abrir modal al presionar el cesto
+    document.addEventListener('click', (e) => {
+        const btnEliminar = e.target.closest('.btn-eliminar-gasto, .btn-borrar, [data-accion="eliminar"]');
+
+        if (btnEliminar) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            idGastoAEliminar = btnEliminar.getAttribute('data-id') || btnEliminar.dataset.id;
+
+            const modalConfirmar = document.getElementById('modalConfirmar');
+            if (modalConfirmar) {
+                modalConfirmar.style.display = 'flex';
+            }
+        }
+    });
+
+    // Confirmar borrado
+    const btnAceptarEliminar = document.getElementById('btnAceptarEliminar');
+    if (btnAceptarEliminar) {
+        btnAceptarEliminar.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!idGastoAEliminar) return;
+
+            try {
+                const respuesta = await fetch(`/api/gastos/${idGastoAEliminar}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const modalConfirmar = document.getElementById('modalConfirmar');
+                if (modalConfirmar) modalConfirmar.style.display = 'none';
+
+                if (respuesta.ok) {
+                    if (typeof cargarGastosDesdeBD === 'function') {
+                        cargarGastosDesdeBD();
+                    } else if (typeof renderizarTablaGastos === 'function') {
+                        renderizarTablaGastos();
+                    } else if (typeof cargarGastos === 'function') {
+                        cargarGastos();
+                    } else {
+                        const fila = document.querySelector(`[data-id="${idGastoAEliminar}"]`)?.closest('tr');
+                        if (fila) fila.remove();
+                    }
+
+                    mostrarAlertaModal('El registro ha sido arrojado al mar exitosamente.', '🌊 GASTO ELIMINADO');
+                } else {
+                    mostrarAlertaModal('No se pudo eliminar el gasto en la base de datos.', '❌ ERROR AL ELIMINAR');
+                }
+            } catch (error) {
+                console.error('Error al conectar con la base de datos:', error);
+                const modalConfirmar = document.getElementById('modalConfirmar');
+                if (modalConfirmar) modalConfirmar.style.display = 'none';
+                mostrarAlertaModal('Hubo un error de conexión al intentar borrar el gasto.', '❌ ERROR DE CONEXIÓN');
+            }
+        });
+    }
+
+    // Cancelar borrado
+    const btnCancelarEliminar = document.getElementById('btnCancelarEliminar');
+    if (btnCancelarEliminar) {
+        btnCancelarEliminar.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const modalConfirmar = document.getElementById('modalConfirmar');
+            if (modalConfirmar) modalConfirmar.style.display = 'none';
+        });
+    }
+
 });
