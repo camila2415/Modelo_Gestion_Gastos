@@ -1,8 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // ==========================================
-    // 0. FUNCIÓN DE ALERTA PERSONALIZADA (MODAL ONE PIECE)
-    // ==========================================
     const mostrarAlertaModal = (mensaje, titulo = "⚓ ALERTA DE AVISO") => {
         let modal = document.getElementById('modalAlertaCustom');
         if (!modal) {
@@ -40,9 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = 'flex';
     };
 
-    // ==========================================
-    // 1. GESTIÓN DE SESIÓN Y USUARIO ACTIVO
-    // ==========================================
     let usuarioGuardado = localStorage.getItem('sgg_usuario_activo');
     if (!usuarioGuardado) {
         usuarioGuardado = 'chopper@gmail.com';
@@ -54,15 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
         userEmailDisplay.textContent = usuarioGuardado;
     }
 
-    // ==========================================
-    // DETECCIÓN DEL TIPO DE PÁGINA ACTUAL
-    // ==========================================
     const esPaginaRegistro = window.location.pathname.includes('registro.html') || !!document.getElementById('formRegistro');
     const esPaginaRecuperar = window.location.pathname.includes('recuperar.html') || !!document.getElementById('formRecuperar');
 
-    // ==========================================
-    // 2. CONTROL DE INICIO DE SESIÓN (SOLO EN INDEX)
-    // ==========================================
     let intentosFallidos = 0;
     let tiempoBloqueoHasta = null;
 
@@ -126,9 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================
-    // 3. PROCESO DE REGISTRO CON VERIFICACIÓN DE DUPLICADO Y TILDES DINÁMICAS
-    // ==========================================
     const formRegistro = document.getElementById('formRegistro') || (esPaginaRegistro ? document.querySelector('form') : null);
 
     if (formRegistro && esPaginaRegistro) {
@@ -211,9 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================
-    // 3.1 PROCESO DE RECUPERACIÓN CON REQUISITOS Y TILDES DINÁMICAS
-    // ==========================================
     const mostrarPromptModalCustom = (emailVal, callback) => {
         let modal = document.getElementById('modalPromptCustom');
         if (!modal) {
@@ -291,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = 'flex';
         inputClave.focus();
 
-        // Control dinámico de requisitos en el Modal
         let esClaveValida = false;
         const evaluarRequisitosModal = () => {
             const val = inputClave.value;
@@ -400,9 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================
-    // 4. MOSTRAR / OCULTAR CONTRASEÑA EN TODAS LAS VISTAS
-    // ==========================================
     const botonesToggle = document.querySelectorAll('.mostrar-contrasena, #btnMostrarPassword, #togglePassword, [id*="Password"], [class*="contrasena"]');
 
     botonesToggle.forEach(btn => {
@@ -430,9 +408,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ==========================================
-    // 5. CAMBIO DE TEMA Y MODO VISUAL
-    // ==========================================
     const aplicarTemaYModo = () => {
         const temaEstilo = localStorage.getItem('sgg_tema_estilo') || 'one-piece';
         const modoLuz = localStorage.getItem('sgg_modo_luz') || 'light';
@@ -479,9 +454,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================
-    // 6. INTEGRACIÓN API EXTERNA (COTIZACIÓN DÓLAR)
-    // ==========================================
     const obtenerCotizacionDolar = async () => {
         const dolarEl = document.getElementById('dolarDisplay');
         if (!dolarEl) return;
