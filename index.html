@@ -6,35 +6,74 @@
     <title>SGG - Iniciar Sesión</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="one-piece-theme auth-page" data-tema="one-piece" data-modo="light">
 
     <div class="header-tools">
-        <button id="btnTema" class="btn-theme">Modo Día / Noche</button>
+     <select id="selectTemaEstilo" class="select-tema">
+            <option value="one-piece">One Piece</option>
+            <option value="normal">Normal</option>
+        </select>
+
+        <button id="btnTemaModo" class="btn-theme">☀️ / 🌙</button>
     </div>
 
-    <h1 class="titulo-principal">Sistema de Gestión de Gastos</h1>
+    <div class="brand-header" style="text-align: center; margin-bottom: 20px;">
+        <h1 class="titulo-principal" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 5px;">
+            <img src="assets/img/luffy - Editado.png" alt="Logo" class="auth-logo-inline txt-onepiece" onerror="this.style.display='none'">
+            <span class="txt-onepiece">Bitácora y Tesorería de la Tripulación</span>
+            <span class="txt-normal"> Sistema de Gestión de Gastos</span>
+        </h1>
+        
+        <p class="subtitulo-pirata" style="text-align: center; margin: 0 auto; display: block;">
+            <span class="txt-onepiece">Control de Botín y Gastos de la Tripulación</span>
+            <span class="txt-normal">Plataforma de Control Financiero Personal</span>
+        </p>
+    </div>
 
     <main class="login-card">
-        <h2>Iniciar Sesión</h2>
-        
-        <form id="formLogin">
+        <h2>
+            <span class="txt-onepiece">⚓ Identificación de Pirata</span>
+            <span class="txt-normal">Iniciar Sesión</span>
+        </h2>
+
+        <form>
             <div class="form-group">
-                <label for="email">Correo electrónico</label>
-                <input type="email" id="email" placeholder="ejemplo@correo.com" required>
+                <label for="email">
+                    <span class="txt-onepiece">Correo Electrónico del Capitán / Navegante</span>
+                    <span class="txt-normal">Correo Electrónico</span>
+                </label>
+                <input type="email" id="email" name="email" placeholder="capitan@grandline.com" required>
             </div>
 
             <div class="form-group">
-                <label for="password">Contraseña</label>
-                <input type="password" id="password" placeholder="••••••••" required>
-                <button type="button" id="verPasswordLogin" class="btn-eye">👁 Mostrar contraseña</button>
+                <label for="password">
+                    <span class="txt-onepiece">Clave del Cofre del Tesoro</span>
+                    <span class="txt-normal">Contraseña</span>
+                </label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required>
             </div>
 
-            <button type="submit" class="btn-ingresar">Ingresar</button>
+        <div style="text-align: left; margin: 8px 0 16px 0;">
+            <span id="togglePassword" style="cursor: pointer; color: #00a8e8; font-size: 0.9rem;">
+             👁️ Mostrar contraseña
+         </span>
+        </div>
+
+            <button type="submit" class="btn-ingresar">
+                <span class="txt-onepiece">⚔️ Embarcar e Ingresar</span>
+                <span class="txt-normal">Ingresar al Sistema</span>
+            </button>
         </form>
 
         <div class="links-container">
-            <a href="registro.html" class="link">Crear una cuenta</a>
-            <a href="recuperar.html" class="link">¿Olvidaste tu contraseña?</a>
+            <a href="registro.html" class="link">
+                <span class="txt-onepiece">📜 Reclutamiento (Crear una cuenta)</span>
+                <span class="txt-normal">Registrarse (Crear una cuenta)</span>
+            </a>
+            <a href="recuperar.html" class="link">
+                <span class="txt-onepiece">🧭 ¿Perdiste tu Vivre Card? (Recuperar clave)</span>
+                <span class="txt-normal">🔑 ¿Olvidaste tu contraseña?</span>
+            </a>
         </div>
     </main>
 

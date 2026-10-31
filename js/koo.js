@@ -1,225 +1,545 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    const userEmailSpan = document.getElementById('userEmail');
-    const usuarioGuardado = localStorage.getItem('usuarioActivo');
-
-    if (userEmailSpan && usuarioGuardado) {
-        const usuario = JSON.parse(usuarioGuardado);
-        if (usuario.email) {
-            userEmailSpan.textContent = usuario.email;
-        }
-    }
-
-    const btnCerrarSesion = document.getElementById('btnCerrarSesion');
-    if (btnCerrarSesion) {
-        btnCerrarSesion.addEventListener('click', () => {
-            localStorage.removeItem('usuarioActivo');
-            window.location.href = 'index.html';
-        });
-    }
-
-    const btnTema = document.getElementById('btnTema');
-    if (btnTema) {
-        if (localStorage.getItem('theme') === 'dark') {
-            document.body.classList.add('dark-mode');
-        }
-
-        btnTema.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            const esOscuro = document.body.classList.contains('dark-mode');
-            localStorage.setItem('theme', esOscuro ? 'dark' : 'light');
-        });
-    }
-
-    const verPasswordLogin = document.getElementById('verPasswordLogin');
-    const passwordLogin = document.getElementById('password');
-
-    if (verPasswordLogin && passwordLogin) {
-        verPasswordLogin.addEventListener('click', () => {
-            const esPassword = passwordLogin.type === 'password';
-            passwordLogin.type = esPassword ? 'text' : 'password';
-            verPasswordLogin.textContent = esPassword ? 'Ocultar contraseña' : 'Mostrar contraseña';
-        });
-    }
-
-    const formLogin = document.getElementById('formLogin');
-    if (formLogin) {
-        formLogin.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const emailInput = document.getElementById('email').value;
-            localStorage.setItem('usuarioActivo', JSON.stringify({ email: emailInput }));
-            window.location.href = 'dashboard.html';
-        });
-    }
-
-    const formGasto = document.getElementById('formGasto');
-    const tablaGastosBody = document.getElementById('tablaGastosBody');
-    const montoTotalDiv = document.getElementById('montoTotal');
-    const btnGuardarGasto = formGasto ? formGasto.querySelector('button[type="submit"]') : null;
-
-    let listaGastos = JSON.parse(localStorage.getItem('gastosGuardados')) || [];
-    let indiceEdicion = -1;
-
-    function renderizarGastos() {
-        if (!tablaGastosBody) return;
-
-        tablaGastosBody.innerHTML = '';
-        let total = 0;
-
-        listaGastos.forEach((gasto, index) => {
-            total += parseFloat(gasto.monto);
-
-            const fila = document.createElement('tr');
-            fila.innerHTML = `
-                <td>$${parseFloat(gasto.monto).toFixed(2)}</td>
-                <td>${gasto.categoria}</td>
-                <td>${gasto.fecha}</td>
-                <td>
-                    <button class="btn-edit" onclick="editarGasto(${index})">Editar</button>
-                    <button class="btn-delete" onclick="eliminarGasto(${index})">Eliminar</button>
-                </td>
+    const mostrarAlertaModal = (mensaje, titulo = "⚓ ALERTA DE AVISO") => {
+        let modal = document.getElementById('modalAlertaCustom');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modalAlertaCustom';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                background: rgba(0, 0, 0, 0.75); display: flex; align-items: center;
+                justify-content: center; z-index: 9999; backdrop-filter: blur(3px);
             `;
-            tablaGastosBody.appendChild(fila);
-        });
+            modal.innerHTML = `
+                <div style="
+                    background: #1a0f07; border: 2px solid #ff9900; border-radius: 12px;
+                    padding: 24px; max-width: 400px; width: 90%; text-align: center;
+                    box-shadow: 0 0 20px rgba(255, 153, 0, 0.4); color: #f0e6d2; font-family: sans-serif;
+                ">
+                    <h3 id="modalAlertaTitulo" style="color: #ff9900; margin-top: 0; font-size: 1.3rem;">${titulo}</h3>
+                    <p id="modalAlertaTexto" style="margin: 15px 0; line-height: 1.4; color: #e0d0b0;"></p>
+                    <button id="btnCerrarModalCustom" style="
+                        background: linear-gradient(135deg, #ff9900, #e67e00); border: none;
+                        color: #1a0f07; font-weight: bold; padding: 10px 20px; border-radius: 6px;
+                        cursor: pointer; font-size: 1rem; width: 100%; margin-top: 10px;
+                    ">Aceptar</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
 
-        if (montoTotalDiv) {
-            montoTotalDiv.textContent = `$${total.toFixed(2)}`;
+            document.getElementById('btnCerrarModalCustom').addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
         }
 
-        localStorage.setItem('gastosGuardados', JSON.stringify(listaGastos));
+        document.getElementById('modalAlertaTitulo').textContent = titulo;
+        document.getElementById('modalAlertaTexto').textContent = mensaje;
+        modal.style.display = 'flex';
+    };
+
+    let usuarioGuardado = localStorage.getItem('sgg_usuario_activo');
+    if (!usuarioGuardado) {
+        usuarioGuardado = 'chopper@gmail.com';
+        localStorage.setItem('sgg_usuario_activo', usuarioGuardado);
     }
 
-    if (formGasto) {
-        formGasto.addEventListener('submit', (e) => {
+    const userEmailDisplay = document.getElementById('userEmailDisplay');
+    if (userEmailDisplay) {
+        userEmailDisplay.textContent = usuarioGuardado;
+    }
+
+    const esPaginaRegistro = window.location.pathname.includes('registro.html') || !!document.getElementById('formRegistro');
+    const esPaginaRecuperar = window.location.pathname.includes('recuperar.html') || !!document.getElementById('formRecuperar');
+
+    let intentosFallidos = 0;
+    let tiempoBloqueoHasta = null;
+    const formLogin = document.getElementById('formLogin') || document.querySelector('.auth-page form');
+
+    if (formLogin && !esPaginaRegistro && !esPaginaRecuperar) {
+        formLogin.addEventListener('submit', (e) => {
+            e.preventDefault(); 
+
+            const ahora = Date.now();
+
+            if (tiempoBloqueoHasta && ahora < tiempoBloqueoHasta) {
+                const segundosRestantes = Math.ceil((tiempoBloqueoHasta - ahora) / 1000);
+                mostrarAlertaModal(`Acceso bloqueado temporalmente por seguridad. Esperá ${segundosRestantes} segundos para reintentar.`, "🔒 BLOQUEO TEMPORAL");
+                return;
+            }
+
+            const emailInput = document.getElementById('email') || document.querySelector('input[type="email"]');
+            const passInput = document.getElementById('password') || document.querySelector('input[type="password"]');
+
+            const emailVal = emailInput ? emailInput.value.trim().toLowerCase() : '';
+            const passVal = passInput ? passInput.value.trim() : '';
+
+            if (!emailVal || !passVal) {
+                mostrarAlertaModal('Por favor, ingresá tu correo y contraseña.', '⚠️ CAMPOS INCOMPLETOS');
+                return;
+            }
+
+            const claveGuardada = localStorage.getItem(`sgg_pass_${emailVal}`);
+            let usuarioValido = false;
+
+            if (claveGuardada) {
+                usuarioValido = (passVal === claveGuardada);
+            } else if (emailVal === 'chopper@gmail.com' && passVal === '123456') {
+                usuarioValido = true;
+            } else {
+                localStorage.setItem(`sgg_pass_${emailVal}`, passVal);
+                usuarioValido = true;
+            }
+            if (usuarioValido) {
+                intentosFallidos = 0;
+                tiempoBloqueoHasta = null;
+
+                localStorage.setItem('sgg_usuario_activo', emailVal);
+                window.location.href = 'dashboard.html';
+            } else {
+                intentosFallidos++;
+
+                if (intentosFallidos >= 3) {
+                    const TIEMPO_BLOQUEO_MS = 30000;
+                    tiempoBloqueoHasta = Date.now() + TIEMPO_BLOQUEO_MS;
+                    intentosFallidos = 0; 
+
+                    mostrarAlertaModal('Superaste el límite de 3 intentos fallidos. Tu acceso fue bloqueado por 30 segundos.', '🚨 ACCESO BLOQUEADO');
+                } else {
+                    const restantes = 3 - intentosFallidos;
+                    mostrarAlertaModal(`Credenciales incorrectas. Te quedan ${restantes} intento(s) antes del bloqueo.`, '❌ ERROR DE ACCESO');
+                }
+            }
+        });
+    }
+
+    const formRegistro = document.getElementById('formRegistro') || (esPaginaRegistro ? document.querySelector('form') : null);
+
+    if (formRegistro && esPaginaRegistro) {
+        const emailInput = document.getElementById('email') || document.querySelector('input[type="email"]');
+        const passInput = document.getElementById('password') || document.querySelectorAll('input[type="password"]')[0];
+        const confirmPassInput = document.querySelectorAll('input[type="password"]')[1];
+
+        const validarRequisitosRegistro = () => {
+            const emailVal = emailInput ? emailInput.value.trim().toLowerCase() : '';
+            const passVal = passInput ? passInput.value : '';
+
+            const dominiosValidos = ['gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com', 'edu.ar', 'live.com'];
+            const dominioEsValido = dominiosValidos.some(dom => emailVal.endsWith(`@${dom}`));
+            
+            const tieneMinimo8 = passVal.length >= 8;
+            const tieneMayuscula = /[A-Z]/.test(passVal);
+            const tieneMinuscula = /[a-z]/.test(passVal);
+            const tieneNumero = /[0-9]/.test(passVal);
+            const tieneSimbolo = /[^A-Za-z0-9]/.test(passVal);
+            const listaItems = document.querySelectorAll('.auth-page ul li, form ul li');
+
+            listaItems.forEach(item => {
+                const texto = item.textContent;
+
+                let cumple = false;
+                if (texto.includes('Dominio de correo')) cumple = dominioEsValido;
+                else if (texto.includes('Mínimo 8') || texto.includes('8 caracteres')) cumple = tieneMinimo8;
+                else if (texto.includes('mayúscula')) cumple = tieneMayuscula;
+                else if (texto.includes('minúscula')) cumple = tieneMinuscula;
+                else if (texto.includes('número')) cumple = tieneNumero;
+                else if (texto.includes('símbolo')) cumple = tieneSimbolo;
+                else if (texto.includes('18 años')) cumple = true;
+
+                if (cumple) {
+                    item.style.color = '#2ecc71';
+                    if (item.textContent.startsWith('• ❌') || item.textContent.startsWith('❌')) {
+                        item.textContent = item.textContent.replace('❌', '✔️');
+                    }
+                } else {
+                    item.style.color = '#e74c3c';
+                    if (item.textContent.startsWith('• ✔️') || item.textContent.startsWith('✔️')) {
+                        item.textContent = item.textContent.replace('✔️', '❌');
+                    }
+                }
+            });
+        };
+
+        if (emailInput) emailInput.addEventListener('input', validarRequisitosRegistro);
+        if (passInput) passInput.addEventListener('input', validarRequisitosRegistro);
+        if (confirmPassInput) confirmPassInput.addEventListener('input', validarRequisitosRegistro);
+
+        formRegistro.addEventListener('submit', (e) => {
             e.preventDefault();
 
-            const monto = document.getElementById('montoGasto').value;
-            const categoria = document.getElementById('categoriaGasto').value;
-            const fecha = document.getElementById('fechaGasto').value;
+            const emailVal = emailInput ? emailInput.value.trim().toLowerCase() : '';
+            const passVal = passInput ? passInput.value : '';
 
-            if (indiceEdicion === -1) {
-                listaGastos.push({ monto, categoria, fecha });
-            } else {
-                listaGastos[indiceEdicion] = { monto, categoria, fecha };
-                indiceEdicion = -1;
-                if (btnGuardarGasto) btnGuardarGasto.textContent = 'Guardar Gasto';
+            if (!emailVal || !passVal) {
+                mostrarAlertaModal('Por favor, completá todos los campos obligatorios del registro.', '⚠️ REGISTRO INCOMPLETO');
+                return;
             }
 
-            renderizarGastos();
-            formGasto.reset();
+            const claveExistente = localStorage.getItem(`sgg_pass_${emailVal}`);
+            const esUsuarioDefault = (emailVal === 'chopper@gmail.com');
+
+            if (claveExistente || esUsuarioDefault) {
+                mostrarAlertaModal(`El correo "${emailVal}" ya se encuentra registrado en la tripulación. Si olvidaste tu clave, seleccioná la opción de recuperar.`, '🏴‍☠️ CORREO YA REGISTRADO');
+                return;
+            }
+
+            localStorage.setItem('sgg_usuario_activo', emailVal);
+            localStorage.setItem(`sgg_pass_${emailVal}`, passVal);
+
+            mostrarAlertaModal('¡Te has registrado con éxito en la tripulación! Redirigiendo al puerto...', '⚔️ REGISTRO EXITOSO');
+
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 1500);
         });
+    }
 
-        window.editarGasto = function(index) {
-            const gasto = listaGastos[index];
-            document.getElementById('montoGasto').value = gasto.monto;
-            document.getElementById('categoriaGasto').value = gasto.categoria;
-            document.getElementById('fechaGasto').value = gasto.fecha;
+    const mostrarPromptModalCustom = (emailVal, callback) => {
+        let modal = document.getElementById('modalPromptCustom');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modalPromptCustom';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                background: rgba(0, 0, 0, 0.75); display: flex; align-items: center;
+                justify-content: center; z-index: 9999; backdrop-filter: blur(3px);
+            `;
+            modal.innerHTML = `
+                <div style="
+                    background: #1a0f07; border: 2px solid #ff9900; border-radius: 12px;
+                    padding: 20px; max-width: 420px; width: 90%; text-align: center;
+                    box-shadow: 0 0 20px rgba(255, 153, 0, 0.4); color: #f0e6d2; font-family: sans-serif;
+                ">
+                    <h3 style="color: #ff9900; margin-top: 0; font-size: 1.25rem;">🕊️ VIVRE CARD RECIBIDA</h3>
+                    <p style="margin: 5px 0; font-size: 0.9rem; color: #e0d0b0;">
+                        Señal enviada para: <strong id="promptUserEmail" style="color: #ffcc00;"></strong>
+                    </p>
+                    <label style="display: block; margin-top: 10px; text-align: left; font-size: 0.85rem; color: #ff9900; font-weight: bold;">
+                        Ingresá tu nueva clave del cofre:
+                    </label>
 
-            indiceEdicion = index;
-            if (btnGuardarGasto) btnGuardarGasto.textContent = 'Actualizar Gasto';
+                    <div style="position: relative; margin-top: 5px; margin-bottom: 10px;">
+                        <input type="password" id="inputNuevaClaveCustom" placeholder="Nueva contraseña" style="
+                            width: 100%; padding: 10px 40px 10px 10px;
+                            background: #0d0704; border: 1px solid #ff9900; border-radius: 6px;
+                            color: #ffffff; font-size: 0.95rem; box-sizing: border-box; outline: none;
+                        " />
+                        <button type="button" id="btnToggleClaveModal" style="
+                            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+                            background: none; border: none; color: #ff9900; cursor: pointer;
+                            font-size: 1.1rem; padding: 4px;
+                        " title="Mostrar/Ocultar clave">👁️</button>
+                    </div>
+
+                    <ul id="listaReqModal" style="
+                        text-align: left; font-size: 0.8rem; padding-left: 15px; margin: 10px 0 15px 0;
+                        list-style-type: none; line-height: 1.5; color: #e74c3c;
+                    ">
+                        <li id="reqMin8">❌ Mínimo 8 caracteres</li>
+                        <li id="reqMayus">❌ Una letra mayúscula</li>
+                        <li id="reqMinus">❌ Una letra minúscula</li>
+                        <li id="reqNum">❌ Un número</li>
+                        <li id="reqSimbolo">❌ Un símbolo especial</li>
+                    </ul>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btnCancelarPrompt" style="
+                            flex: 1; background: #332211; border: 1px solid #664422;
+                            color: #d0c0a0; font-weight: bold; padding: 10px; border-radius: 6px;
+                            cursor: pointer; font-size: 0.95rem;
+                        ">Cancelar</button>
+                        <button id="btnGuardarPrompt" style="
+                            flex: 1; background: linear-gradient(135deg, #ff9900, #e67e00); border: none;
+                            color: #1a0f07; font-weight: bold; padding: 10px; border-radius: 6px;
+                            cursor: pointer; font-size: 0.95rem; opacity: 0.6;
+                        ">Guardar Clave</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        document.getElementById('promptUserEmail').textContent = emailVal;
+        const inputClave = document.getElementById('inputNuevaClaveCustom');
+        const btnToggleClave = document.getElementById('btnToggleClaveModal');
+        const btnGuardar = document.getElementById('btnGuardarPrompt');
+
+        inputClave.value = '';
+        inputClave.type = 'password';
+        btnToggleClave.textContent = '👁️';
+        modal.style.display = 'flex';
+        inputClave.focus();
+
+        let esClaveValida = false;
+        const evaluarRequisitosModal = () => {
+            const val = inputClave.value;
+
+            const min8 = val.length >= 8;
+            const mayus = /[A-Z]/.test(val);
+            const minus = /[a-z]/.test(val);
+            const num = /[0-9]/.test(val);
+            const sim = /[^A-Za-z0-9]/.test(val);
+            const setReq = (elemId, cumple, texto) => {
+                const el = document.getElementById(elemId);
+                if (el) {
+                    el.textContent = `${cumple ? '✔️' : '❌'} ${texto}`;
+                    el.style.color = cumple ? '#2ecc71' : '#e74c3c';
+                }
+            };
+
+            setReq('reqMin8', min8, 'Mínimo 8 caracteres');
+            setReq('reqMayus', mayus, 'Una letra mayúscula');
+            setReq('reqMinus', minus, 'Una letra minúscula');
+            setReq('reqNum', num, 'Un número');
+            setReq('reqSimbolo', sim, 'Un símbolo especial');
+
+            esClaveValida = min8 && mayus && minus && num && sim;
+            btnGuardar.style.opacity = esClaveValida ? '1' : '0.6';
         };
 
-        window.eliminarGasto = function(index) {
-            listaGastos.splice(index, 1);
-            if (indiceEdicion === index) {
-                indiceEdicion = -1;
-                formGasto.reset();
-                if (btnGuardarGasto) btnGuardarGasto.textContent = 'Guardar Gasto';
+        evaluarRequisitosModal();
+        inputClave.addEventListener('input', evaluarRequisitosModal);
+
+        const nuevoToggle = btnToggleClave.cloneNode(true);
+        btnToggleClave.parentNode.replaceChild(nuevoToggle, btnToggleClave);
+
+        nuevoToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            const esPassword = inputClave.type === 'password';
+            inputClave.type = esPassword ? 'text' : 'password';
+            nuevoToggle.textContent = esPassword ? '🙈' : '👁️';
+        });
+
+        const btnCancelar = document.getElementById('btnCancelarPrompt');
+
+        const nuevoGuardar = btnGuardar.cloneNode(true);
+        const nuevoCancelar = btnCancelar.cloneNode(true);
+        btnGuardar.parentNode.replaceChild(nuevoGuardar, btnGuardar);
+        btnCancelar.parentNode.replaceChild(nuevoCancelar, btnCancelar);
+
+        nuevoGuardar.addEventListener('click', () => {
+            const clave = inputClave.value.trim();
+            if (!esClaveValida) {
+                mostrarAlertaModal('La contraseña ingresada no cumple con los requisitos de seguridad requeridos.', '⚠️ REQUISITOS INCOMPLETOS');
+                return;
             }
-            renderizarGastos();
-        };
+            modal.style.display = 'none';
+            callback(clave);
+        });
 
-        renderizarGastos();
-    }
+        nuevoCancelar.addEventListener('click', () => {
+            modal.style.display = 'none';
+            callback(null);
+        });
+    };
 
-    const verPasswordRegistro = document.getElementById('verPasswordRegistro');
-    const passwordRegistro = document.getElementById('passwordRegistro');
+    const formRecuperar = document.getElementById('formRecuperar') || (esPaginaRecuperar ? document.querySelector('form') : null);
+    if (formRecuperar && esPaginaRecuperar) {
+        formRecuperar.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const emailInput = document.getElementById('email') || document.querySelector('input[type="email"]');
+            const emailVal = emailInput ? emailInput.value.trim().toLowerCase() : '';
 
-    if (verPasswordRegistro && passwordRegistro) {
-        verPasswordRegistro.addEventListener('click', () => {
-            const esPassword = passwordRegistro.type === 'password';
-            passwordRegistro.type = esPassword ? 'text' : 'password';
-            verPasswordRegistro.textContent = esPassword ? '🙈 Ocultar contraseña' : '👁 Mostrar contraseña';
+            if (!emailVal) {
+                mostrarAlertaModal('Por favor, ingresá tu correo electrónico para enviar la señal de auxilio.', '⚠️ EMAIL REQUERIDO');
+                return;
+            }
+
+            const claveExistente = localStorage.getItem(`sgg_pass_${emailVal}`);
+            const esUsuarioDefault = (emailVal === 'chopper@gmail.com');
+
+            if (!claveExistente && !esUsuarioDefault) {
+                mostrarAlertaModal(`El correo ${emailVal} no se encuentra registrado en la tripulación. Verificá los datos o registrate primero.`, '🏴‍☠️ USUARIO NO ENCONTRADO');
+                return;
+            }
+
+            mostrarPromptModalCustom(emailVal, (nuevaClave) => {
+                if (!nuevaClave) {
+                    mostrarAlertaModal('No se realizó ningún cambio en la clave del cofre.', '⚠️ OPERACIÓN CANCELADA');
+                    return;
+                }
+
+                const claveActual = claveExistente || (esUsuarioDefault ? '123456' : '');
+
+                if (claveActual && nuevaClave === claveActual) {
+                    mostrarAlertaModal('Estás ingresando la contraseña actual. Debes escribir una clave diferente para actualizar el cofre.', '⚠️ CLAVE DUPLICADA');
+                    return;
+                }
+
+                localStorage.setItem(`sgg_pass_${emailVal}`, nuevaClave);
+
+                mostrarAlertaModal(`¡Clave restablecida con éxito para ${emailVal}! Ahora podés embarcar con tu nueva contraseña.`, '⚔️ CLAVE RESTABLECIDA');
+
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+            });
         });
     }
 
-    const regEmail = document.getElementById('regEmail');
-    const regFechaNac = document.getElementById('regFechaNac');
-    const repetirPassword = document.getElementById('repetirPassword');
-    const btnRegistrar = document.getElementById('btnRegistrar');
+    const botonesToggle = document.querySelectorAll('.mostrar-contrasena, #btnMostrarPassword, #togglePassword, [id*="Password"], [class*="contrasena"]');
 
-    const reqDominioMail = document.getElementById('reqDominioMail');
-    const reqEdad = document.getElementById('reqEdad');
-    const reqLongitud = document.getElementById('longitud');
-    const reqMayuscula = document.getElementById('mayuscula');
-    const reqMinuscula = document.getElementById('minuscula');
-    const reqNumero = document.getElementById('numero');
-    const reqEspecial = document.getElementById('especial');
+    botonesToggle.forEach(btn => {
+        if (btn.tagName === 'INPUT' && btn.type === 'password') return;
 
-    function esCorreoValido(email) {
-        const correo = email.trim().toLowerCase();
-        const dominiosPermitidos = ['@gmail.com', '@hotmail.com', '@outlook.com', '@yahoo.com', '@yahoo.com.ar', '@live.com'];
-        const coincideDominio = dominiosPermitidos.some(dom => correo.endsWith(dom));
-        const esEducativo = correo.includes('@') && (correo.endsWith('.edu') || correo.endsWith('.edu.ar') || correo.endsWith('.ar'));
-        return coincideDominio || esEducativo;
-    }
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
 
-    function esMayorDeEdad(fechaString) {
-        if (!fechaString) return false;
-        const fechaNac = new Date(fechaString);
-        const hoy = new Date();
-        let edad = hoy.getFullYear() - fechaNac.getFullYear();
-        const mes = hoy.getMonth() - fechaNac.getMonth();
-        if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
-            edad--;
+            let contenedor = btn.closest('.input-group') || btn.closest('div') || btn.parentElement;
+            let inputPass = contenedor ? contenedor.querySelector('input[type="password"], input[type="text"]') : null;
+
+            if (!inputPass) {
+                const formPadre = btn.closest('form') || document;
+                inputPass = formPadre.querySelector('input[type="password"], input[type="text"]');
+            }
+            if (inputPass) {
+                const esPassword = inputPass.getAttribute('type') === 'password';
+                inputPass.setAttribute('type', esPassword ? 'text' : 'password');
+                
+                if (btn.textContent.includes('Mostrar') || btn.textContent.includes('Ocultar')) {
+                    btn.textContent = esPassword ? '🙈 Ocultar contraseña' : '👁️ Mostrar contraseña';
+                }
+            }
+        });
+    });
+
+    const aplicarTemaYModo = () => {
+        const temaEstilo = localStorage.getItem('sgg_tema_estilo') || 'one-piece';
+        const modoLuz = localStorage.getItem('sgg_modo_luz') || 'light';
+
+        document.body.setAttribute('data-tema', temaEstilo);
+        document.body.setAttribute('data-modo', modoLuz);
+
+        if (temaEstilo === 'one-piece') {
+            document.body.classList.add('one-piece-theme');
+        } else {
+            document.body.classList.remove('one-piece-theme');
         }
-        return edad >= 18;
-    }
 
-    function validarRegistro() {
-        if (!passwordRegistro) return;
-
-        const email = regEmail ? regEmail.value : '';
-        const fechaNac = regFechaNac ? regFechaNac.value : '';
-        const pass = passwordRegistro.value;
-        const passRepetir = repetirPassword ? repetirPassword.value : '';
-
-        const mailValido = esCorreoValido(email);
-        const esMayor = esMayorDeEdad(fechaNac);
-        const tieneLongitud = pass.length >= 8;
-        const tieneMayuscula = /[A-Z]/.test(pass);
-        const tieneMinuscula = /[a-z]/.test(pass);
-        const tieneNumero = /[0-9]/.test(pass);
-        const tieneEspecial = /[!@#$%^&*(),.?":{}|<>]/.test(pass);
-        const coinciden = pass === passRepetir && pass !== '';
-
-        actualizarItem(reqDominioMail, mailValido, "Dominio de correo válido (Gmail, Hotmail, Yahoo, Edu, etc.)");
-        actualizarItem(reqEdad, esMayor, "Ser mayor de 18 años");
-        actualizarItem(reqLongitud, tieneLongitud, "Mínimo 8 caracteres");
-        actualizarItem(reqMayuscula, tieneMayuscula, "Una letra mayúscula");
-        actualizarItem(reqMinuscula, tieneMinuscula, "Una letra minúscula");
-        actualizarItem(reqNumero, tieneNumero, "Un número");
-        actualizarItem(reqEspecial, tieneEspecial, "Un símbolo especial");
-
-        if (btnRegistrar) {
-            btnRegistrar.disabled = !(mailValido && esMayor && tieneLongitud && tieneMayuscula && tieneMinuscula && tieneNumero && tieneEspecial && coinciden);
+        if (modoLuz === 'dark') {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
         }
+
+        const selectTema = document.getElementById('selectTemaEstilo');
+        if (selectTema) selectTema.value = temaEstilo;
+
+        window.dispatchEvent(new Event('cambioTemaModo'));
+    };
+
+    aplicarTemaYModo();
+
+    const selectTema = document.getElementById('selectTemaEstilo');
+    if (selectTema) {
+        selectTema.addEventListener('change', (e) => {
+            localStorage.setItem('sgg_tema_estilo', e.target.value);
+            aplicarTemaYModo();
+        });
     }
 
-    function actualizarItem(elem, valido, texto) {
-        if (elem) {
-            elem.textContent = valido ? `✅ ${texto}` : `❌ ${texto}`;
-            elem.style.color = valido ? "#2e7d32" : "";
+    const btnTema = document.getElementById('btnTemaModo') || document.getElementById('btnTema');
+    if (btnTema) {
+        btnTema.addEventListener('click', () => {
+            const modoActual = document.body.getAttribute('data-modo') || 'light';
+            const nuevoModo = modoActual === 'light' ? 'dark' : 'light';
+
+            localStorage.setItem('sgg_modo_luz', nuevoModo);
+            aplicarTemaYModo();
+        });
+    }
+
+    const obtenerCotizacionDolar = async () => {
+        const dolarEl = document.getElementById('dolarDisplay');
+        if (!dolarEl) return;
+
+        try {
+            const respuesta = await fetch('https://dolarapi.com/v1/dolares/oficial');
+            if (!respuesta.ok) throw new Error('Error HTTP al consultar API');
+            
+            const datos = await respuesta.json();
+            dolarEl.textContent = `💵 USD Oficial: $${datos.venta}`;
+        } catch (error) {
+            console.error('Manejo de resiliencia API Dólar:', error);
+            dolarEl.textContent = '💵 USD Oficial: N/A';
         }
-    }
+    };
 
-    if (passwordRegistro) {
-        [regEmail, regFechaNac, passwordRegistro, repetirPassword].forEach(input => {
-            if (input) {
-                input.addEventListener('input', validarRegistro);
-                input.addEventListener('change', validarRegistro);
+    obtenerCotizacionDolar();
+
+    // ==========================================
+    // MANEJO DEL MODAL DE ELIMINACIÓN (#modalConfirmar)
+    // ==========================================
+    let idGastoAEliminar = null;
+
+    // Abrir modal al presionar el cesto
+    document.addEventListener('click', (e) => {
+        const btnEliminar = e.target.closest('.btn-eliminar-gasto, .btn-borrar, [data-accion="eliminar"]');
+
+        if (btnEliminar) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            idGastoAEliminar = btnEliminar.getAttribute('data-id') || btnEliminar.dataset.id;
+
+            const modalConfirmar = document.getElementById('modalConfirmar');
+            if (modalConfirmar) {
+                modalConfirmar.style.display = 'flex';
+            }
+        }
+    });
+
+    // Confirmar borrado
+    const btnAceptarEliminar = document.getElementById('btnAceptarEliminar');
+    if (btnAceptarEliminar) {
+        btnAceptarEliminar.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!idGastoAEliminar) return;
+
+            try {
+                const respuesta = await fetch(`/api/gastos/${idGastoAEliminar}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const modalConfirmar = document.getElementById('modalConfirmar');
+                if (modalConfirmar) modalConfirmar.style.display = 'none';
+
+                if (respuesta.ok) {
+                    if (typeof cargarGastosDesdeBD === 'function') {
+                        cargarGastosDesdeBD();
+                    } else if (typeof renderizarTablaGastos === 'function') {
+                        renderizarTablaGastos();
+                    } else if (typeof cargarGastos === 'function') {
+                        cargarGastos();
+                    } else {
+                        const fila = document.querySelector(`[data-id="${idGastoAEliminar}"]`)?.closest('tr');
+                        if (fila) fila.remove();
+                    }
+
+                    mostrarAlertaModal('El registro ha sido arrojado al mar exitosamente.', '🌊 GASTO ELIMINADO');
+                } else {
+                    mostrarAlertaModal('No se pudo eliminar el gasto en la base de datos.', '❌ ERROR AL ELIMINAR');
+                }
+            } catch (error) {
+                console.error('Error al conectar con la base de datos:', error);
+                const modalConfirmar = document.getElementById('modalConfirmar');
+                if (modalConfirmar) modalConfirmar.style.display = 'none';
+                mostrarAlertaModal('Hubo un error de conexión al intentar borrar el gasto.', '❌ ERROR DE CONEXIÓN');
             }
         });
     }
+
+    // Cancelar borrado
+    const btnCancelarEliminar = document.getElementById('btnCancelarEliminar');
+    if (btnCancelarEliminar) {
+        btnCancelarEliminar.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const modalConfirmar = document.getElementById('modalConfirmar');
+            if (modalConfirmar) modalConfirmar.style.display = 'none';
+        });
+    }
+
 });
-

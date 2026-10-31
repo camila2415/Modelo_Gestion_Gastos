@@ -3,50 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGG - Recuperar Contraseña</title>
+    <title>SGG - Recuperar Acceso</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="one-piece-theme auth-page" data-tema="one-piece" data-modo="light">
 
     <div class="header-tools">
-        <button id="btnTema" class="btn-theme">Modo Día / Noche</button>
+        <select id="selectTemaEstilo" class="select-tema">
+            <option value="one-piece">One Piece</option>
+            <option value="normal">Normal</option>
+        </select>
+
+        <button id="btnTemaModo" class="btn-theme">☀️ / 🌙</button>
     </div>
 
-    <h1 class="titulo-principal">Sistema de Gestión de Gastos</h1>
+    <div class="brand-header" style="text-align: center; margin-bottom: 20px;">
+        <h1 class="titulo-principal" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 5px;">
+            <img src="assets/img/luffy - Editado.png" alt="luffy" class="auth-logo-inline txt-onepiece" onerror="this.style.display='none'">
+            <span class="txt-onepiece">Tesorería del Grand Line</span>
+            <span class="txt-normal">Sistema de Gestión de Gastos</span>
+        </h1>
+        
+        <p class="subtitulo-pirata" style="text-align: center; margin: 0 auto; display: block;">
+            <span class="txt-onepiece">Restablece tu Acceso al Cofre del Tesoro</span>
+            <span class="txt-normal">Restablecimiento de Contraseña de Usuario</span>
+        </p>
+    </div>
 
     <main class="login-card">
-        <h2>Recuperar Contraseña</h2>
+        <h2>
+            <span class="txt-onepiece">🧭 Recuperar Vivre Card</span>
+            <span class="txt-normal">🔑 Recuperar Contraseña</span>
+        </h2>
+        
+        <p style="text-align: center; margin-bottom: 20px; font-size: 0.95rem;">
+            Ingresa tu correo registrado para enviarte las instrucciones de recuperación.
+        </p>
         
         <form id="formRecuperar">
             <div class="form-group">
-                <label for="recEmail">Correo electrónico registrado</label>
-                <input type="email" id="recEmail" placeholder="ejemplo@correo.com" required>
+                <label for="emailRecuperar">
+                    <span class="txt-onepiece">Correo del Capitán / Navegante</span>
+                    <span class="txt-normal">Correo Electrónico Registrado</span>
+                </label>
+                <input type="email" id="emailRecuperar" placeholder="usuario@correo.com" required>
             </div>
 
-            <div class="form-group">
-                <label for="nuevaPassword">Nueva Contraseña</label>
-                <input type="password" id="nuevaPassword" placeholder="••••••••" required>
-                <button type="button" id="verNuevaPassword" class="btn-eye">👁 Mostrar contraseña</button>
-            </div>
-
-            <div class="form-group">
-                <label for="repetirNuevaPassword">Repetir nueva contraseña</label>
-                <input type="password" id="repetirNuevaPassword" placeholder="••••••••" required>
-            </div>
-
-            <ul class="requisitos-lista">
-                <li id="longitud">❌ Mínimo 8 caracteres</li>
-                <li id="mayuscula">❌ Una letra mayúscula</li>
-                <li id="minuscula">❌ Una letra minúscula</li>
-                <li id="numero">❌ Un número</li>
-                <li id="especial">❌ Un símbolo especial</li>
-            </ul>
-
-            <button type="submit" id="btnCambiar" class="btn-ingresar" disabled>Cambiar Contraseña</button>
+            <button type="submit" class="btn-ingresar">
+                <span class="txt-onepiece">📨 Enviar Señal de Auxilio</span>
+                <span class="txt-normal">Enviar Enlace de Recuperación</span>
+            </button>
         </form>
 
         <div class="links-container">
-            <a href="index.html" class="link">Volver al inicio de sesión</a>
+            <a href="index.html" class="link">
+                <span class="txt-onepiece">⚓ Volver a la Identificación</span>
+                <span class="txt-normal">Volver a Iniciar Sesión</span>
+            </a>
+            <a href="registro.html" class="link">
+                <span class="txt-onepiece">📜 Reclutamiento (Crear cuenta)</span>
+                <span class="txt-normal">Registrarse (Crear cuenta)</span>
+            </a>
         </div>
     </main>
 
