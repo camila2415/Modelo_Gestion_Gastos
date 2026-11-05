@@ -100,22 +100,34 @@ window.AppDB = {
     },
 
     downloadDB: async function() {
-        try {
-            const data = this.db.export(); // Exporta el binario SQLite
-            const blob = new Blob([data], { type: 'application/x-sqlite3' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = this.fileName; // sgg_database.sqlite
-            document.body.appendChild(a);
-            a.click();
+    try {
+        // Re-inicializa si no existe en memoria
+        if (!this.db) {
+            await this.initDB();
+        }
+
+        const data = this.db.export();
+        const blob = new Blob([data.buffer || data], { type: 'application/x-sqlite3' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'sgg_database.sqlite';
+        document.body.appendChild(a);
+        
+        a.click();
+        
+        setTimeout(() => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error("Error al descargar la base de datos:", error);
-        }
+        }, 300);
+    } catch (error) {
+        console.error("Error al descargar la base de datos:", error);
+        alert("No se pudo exportar la base de datos.");
     }
+},
+   
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -554,4 +566,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('cambioTemaModo', actualizarDashboard);
 
     actualizarDashboard();
+
+    const btnDescargarBD = document.getElementById('btnDescargarBD');
+    if (btnDescargarBD) {
+        btnDescargarBD.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await window.AppDB.downloadDB();
+        });
+    }
 });
