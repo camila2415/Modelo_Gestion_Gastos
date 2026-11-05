@@ -96,7 +96,6 @@ window.AppDB = {
     }
 };
 
-// LÓGICA COMPLETA DE INTERFAZ DEL DASHBOARD
 document.addEventListener('DOMContentLoaded', async () => {
 
     let chartDona = null;
