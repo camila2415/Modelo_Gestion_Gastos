@@ -73,7 +73,11 @@ window.AppDB = {
 
     save: async function() {
         try {
-            const data = this.db.export();
+            const data = this.db.export(); // Binary ArrayBuffer
+            
+            const base64Str = btoa(String.fromCharCode.apply(null, data));
+            localStorage.setItem('sgg_db_backup', base64Str);
+
             const root = await navigator.storage.getDirectory();
             const fileHandle = await root.getFileHandle(this.fileName, { create: true });
             const writable = await fileHandle.createWritable();
