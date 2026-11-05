@@ -73,7 +73,7 @@ window.AppDB = {
 
     save: async function() {
         try {
-            const data = this.db.export(); // Binary ArrayBuffer
+            const data = this.db.export(); 
             
             const base64Str = btoa(String.fromCharCode.apply(null, data));
             localStorage.setItem('sgg_db_backup', base64Str);
@@ -97,6 +97,24 @@ window.AppDB = {
         }
         stmt.free();
         return result;
+    },
+
+    downloadDB: async function() {
+        try {
+            const data = this.db.export(); // Exporta el binario SQLite
+            const blob = new Blob([data], { type: 'application/x-sqlite3' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = this.fileName; // sgg_database.sqlite
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Error al descargar la base de datos:", error);
+        }
     }
 };
 
