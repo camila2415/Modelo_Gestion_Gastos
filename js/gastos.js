@@ -1,6 +1,104 @@
+// MÓDULO DE BASE DE DATOS SEGURA CON OPFS (Resguardado de F12 / LocalStorage)
+window.AppDB = {
+    db: null,
+    fileName: 'sgg_database.sqlite',
+
+    initDB: async function() {
+        if (this.db) return;
+        
+        const SQL = await initSqlJs({
+            locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+        });
+
+        const opfsData = await this.readFromOPFS();
+
+        if (opfsData) {
+            this.db = new SQL.Database(opfsData);
+        } else {
+            this.db = new SQL.Database();
+            this.db.run(`
+                CREATE TABLE usuarios (
+                    id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    nombre TEXT NOT NULL,
+                    apellido TEXT NOT NULL,
+                    dob TEXT NOT NULL,
+                    question TEXT NOT NULL,
+                    answer TEXT NOT NULL,
+                    fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE gastos (
+                    id_gasto INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id_usuario INTEGER NOT NULL,  
+                    descripcion TEXT NOT NULL,
+                    monto REAL NOT NULL CHECK (monto > 0), 
+                    categoria TEXT NOT NULL,
+                    tipo TEXT NOT NULL DEFAULT 'egreso',
+                    url_comprobante TEXT DEFAULT NULL,   
+                    fecha_gasto DATE NOT NULL,
+                    activo INTEGER DEFAULT 1,             
+                    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE RESTRICT
+                );
+
+                CREATE INDEX idx_user_gastos ON gastos(id_usuario);
+                CREATE INDEX idx_activo ON gastos(activo);
+            `);
+
+            this.db.run(`
+                INSERT INTO usuarios (nombre, apellido, dob, email, username, password_hash, question, answer)
+                VALUES 
+                ('Chopper', 'Doctor', '1990-01-01', 'chopper@gmail.com', 'chopper', 'Hola1234@', 'mascota', 'poroto');
+            `);
+
+            await this.save();
+        }
+    },
+
+    readFromOPFS: async function() {
+        try {
+            const root = await navigator.storage.getDirectory();
+            const fileHandle = await root.getFileHandle(this.fileName);
+            const file = await fileHandle.getFile();
+            const buffer = await file.arrayBuffer();
+            return new Uint8Array(buffer);
+        } catch (error) {
+            console.info("Creando archivo seguro en OPFS...");
+            return null;
+        }
+    },
+
+    save: async function() {
+        try {
+            const data = this.db.export();
+            const root = await navigator.storage.getDirectory();
+            const fileHandle = await root.getFileHandle(this.fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(data);
+            await writable.close();
+        } catch (error) {
+            console.error("Error al guardar en OPFS:", error);
+        }
+    },
+
+    query: function(sql, params = []) {
+        const stmt = this.db.prepare(sql);
+        stmt.bind(params);
+        const result = [];
+        while (stmt.step()) {
+            result.push(stmt.getAsObject());
+        }
+        stmt.free();
+        return result;
+    }
+};
+
+// LÓGICA COMPLETA DE INTERFAZ DEL DASHBOARD
 document.addEventListener('DOMContentLoaded', async () => {
 
-    let db = null;
     let chartDona = null;
     let chartBarras = null;
     let idGastoEnEdicion = null;
@@ -14,7 +112,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const userEmailDisplay = document.getElementById('userEmailDisplay');
     if (userEmailDisplay) userEmailDisplay.textContent = usuarioActivo;
 
-    const nombreArchivoDB = `sgg_database_${usuarioActivo.replace(/[^a-zA-Z0-9]/g, '_')}.sqlite`;
+    await window.AppDB.initDB();
+
+    const obtenerIdUsuarioActual = () => {
+        const res = window.AppDB.query(`SELECT id_usuario FROM usuarios WHERE email = ? OR username = ?`, [usuarioActivo, usuarioActivo]);
+        return res.length > 0 ? res[0].id_usuario : 1;
+    };
 
     const mostrarAlertaCustom = (mensaje, tituloOverride = null) => {
         const modal = document.getElementById('modalAlertaCustom');
@@ -41,179 +144,58 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    const cargarDesdeOPFS = async () => {
-        try {
-            const root = await navigator.storage.getDirectory();
-            const fileHandle = await root.getFileHandle(nombreArchivoDB);
-            const file = await fileHandle.getFile();
-            const arrayBuffer = await file.arrayBuffer();
-            return new Uint8Array(arrayBuffer);
-        } catch (err) {
-            return null;
-        }
-    };
-
-    const guardarEnOPFS = async () => {
-        if (!db) return;
-        try {
-            const data = db.export();
-            const root = await navigator.storage.getDirectory();
-            const fileHandle = await root.getFileHandle(nombreArchivoDB, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(data);
-            await writable.close();
-        } catch (err) {
-            console.error("❌ Error guardando en OPFS:", err);
-        }
-    };
-
-    const initSQLiteDB = async () => {
-        try {
-            const SQL = await initSqlJs({
-                locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
-            });
-
-            const datosBinarios = await cargarDesdeOPFS();
-            db = datosBinarios ? new SQL.Database(datosBinarios) : new SQL.Database();
-
-            const DDL = `
-                CREATE TABLE IF NOT EXISTS movimientos (
-                    id INTEGER PRIMARY KEY,
-                    email_usuario TEXT,
-                    usuario TEXT,
-                    tipo_movimiento TEXT NOT NULL,
-                    monto REAL NOT NULL,
-                    categoria TEXT NOT NULL,
-                    fecha TEXT NOT NULL,
-                    descripcion TEXT NOT NULL,
-                    url_comprobante TEXT,
-                    estado_activo INTEGER DEFAULT 1,
-                    activo INTEGER DEFAULT 1
-                );
-            `;
-            db.exec(DDL);
-
-            try { db.exec("ALTER TABLE movimientos ADD COLUMN email_usuario TEXT;"); } catch (e) {}
-            try { db.exec("ALTER TABLE movimientos ADD COLUMN estado_activo INTEGER DEFAULT 1;"); } catch (e) {}
-
-            await guardarEnOPFS();
-        } catch (err) {
-            console.error("❌ Error inicializando SQLite:", err);
-        }
-    };
-
-    const obtenerMovimientosSQL = () => {
-        if (!db) return [];
-        try {
-            const query = `
-                SELECT id, 
-                       COALESCE(email_usuario, usuario) as email_usuario, 
-                       tipo_movimiento, monto, categoria, fecha, descripcion, url_comprobante, 
-                       COALESCE(estado_activo, activo) as estado_activo 
-                FROM movimientos 
-                WHERE (email_usuario = '${usuarioActivo}' OR usuario = '${usuarioActivo}') 
-                  AND (estado_activo = 1 OR estado_activo = 'true' OR activo = 1 OR activo = 'true') 
-                ORDER BY fecha DESC, id DESC;
-            `;
-            const res = db.exec(query);
-            if (!res || res.length === 0) return [];
-
-            const cols = res[0].columns;
-            return res[0].values.map(row => {
-                let obj = {};
-                cols.forEach((col, idx) => {
-                    if (col === 'estado_activo') {
-                        obj[col] = true;
-                    } else if (col === 'monto' || col === 'id') {
-                        obj[col] = Number(row[idx]);
-                    } else {
-                        obj[col] = row[idx];
-                    }
-                });
-                return obj;
-            });
-        } catch (err) {
-            console.error("❌ Error en SELECT:", err);
-            return [];
-        }
-    };
-
-    const insertarMovimientoSQL = async (mov) => {
-        if (!db) return;
-        try {
-            const stmt = db.prepare(`
-                INSERT INTO movimientos (id, email_usuario, usuario, tipo_movimiento, monto, categoria, fecha, descripcion, url_comprobante, estado_activo, activo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1);
-            `);
-            stmt.run([
-                mov.id,
-                mov.email_usuario,
-                mov.email_usuario,
-                mov.tipo_movimiento,
-                mov.monto,
-                mov.categoria,
-                mov.fecha,
-                mov.descripcion,
-                mov.url_comprobante
-            ]);
-            stmt.free();
-            await guardarEnOPFS();
-        } catch (err) {
-            console.error("❌ Error en INSERT:", err);
-        }
-    };
-
-    const actualizarMovimientoSQL = async (mov) => {
-        if (!db) return;
-        try {
-            const stmt = db.prepare(`
-                UPDATE movimientos 
-                SET tipo_movimiento = ?, monto = ?, categoria = ?, fecha = ?, descripcion = ?, url_comprobante = COALESCE(?, url_comprobante)
-                WHERE id = ? AND (email_usuario = ? OR usuario = ?);
-            `);
-            stmt.run([
-                mov.tipo_movimiento,
-                mov.monto,
-                mov.categoria,
-                mov.fecha,
-                mov.descripcion,
-                mov.url_comprobante,
-                mov.id,
-                usuarioActivo,
-                usuarioActivo
-            ]);
-            stmt.free();
-            await guardarEnOPFS();
-        } catch (err) {
-            console.error("❌ Error en UPDATE:", err);
-        }
-    };
-
-    const deshabilitarMovimientoSQL = async (id) => {
-        if (!db) return;
-        db.exec(`UPDATE movimientos SET estado_activo = 0, activo = 0 WHERE id = ${id};`);
-        await guardarEnOPFS();
-    };
-
     const subirComprobanteAPI = async (fileInput) => {
         if (!fileInput || !fileInput.files || fileInput.files.length === 0) return null;
+
+        const archivo = fileInput.files[0];
+
         try {
             const formData = new FormData();
-            formData.append('image', fileInput.files[0]);
+            formData.append('image', archivo);
+            
             const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
                 method: 'POST',
                 body: formData
             });
+
             const data = await res.json();
-            return (data && data.data) ? data.data.url : null;
+            if (data && data.data && data.data.url) {
+                return data.data.url;
+            }
         } catch (err) {
-            return null;
+            console.warn("⚠️ API ImgBB no disponible, aplicando compresión local...");
         }
+
+        return new Promise((resolve) => {
+            const img = new Image();
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_ANCHO = 500;
+                    const escala = MAX_ANCHO / img.width;
+                    canvas.width = (img.width > MAX_ANCHO) ? MAX_ANCHO : img.width;
+                    canvas.height = (img.width > MAX_ANCHO) ? img.height * escala : img.height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.6));
+                };
+                img.onerror = () => resolve(null);
+            };
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(archivo);
+        });
     };
 
     const actualizarDashboard = () => {
-        const movimientos = obtenerMovimientosSQL();
-        console.log("📊 Movimientos cargados desde SQLite:", movimientos);
+        const idUser = obtenerIdUsuarioActual();
+        const movimientos = window.AppDB.query(
+            `SELECT * FROM gastos WHERE id_usuario = ? AND activo = 1 ORDER BY fecha_gasto DESC, id_gasto DESC`, 
+            [idUser]
+        );
 
         let balance = 0;
         let totalIngresos = 0;
@@ -229,7 +211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         movimientos.forEach(m => {
             const monto = Number(m.monto) || 0;
-            const esIngreso = m.tipo_movimiento.toLowerCase().includes('ingreso');
+            const esIngreso = m.tipo.toLowerCase().includes('ingreso');
 
             if (esIngreso) {
                 balance += monto;
@@ -240,18 +222,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const cat = m.categoria || 'Varios';
                 egresosPorCat[cat] = (egresosPorCat[cat] || 0) + monto;
             }
+
             if (tablaBody) {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${m.fecha || '-'}</td>
+                    <td>${m.fecha_gasto || '-'}</td>
                     <td><b style="color:${esIngreso ? '#10b981' : '#ef4444'}">${esIngreso ? '🟢 Ingreso' : '🔴 Egreso'}</b></td>
                     <td>${m.categoria || 'General'}</td>
                     <td>${m.descripcion || ''}</td>
                     <td style="font-weight:bold; color:${esIngreso ? '#10b981' : '#ef4444'}">${esIngreso ? '+' : '-'}$${monto.toFixed(2)}</td>
                     <td>${m.url_comprobante ? `<a href="${m.url_comprobante}" target="_blank" style="color:#3b82f6;">📎 Ticket</a>` : 'Sin ticket'}</td>
                     <td>
-                        <button type="button" class="btn-editar" data-id="${m.id}" style="cursor:pointer; padding:2px 6px; margin-right:4px;">✏️</button>
-                        <button type="button" class="btn-eliminar" data-id="${m.id}" style="cursor:pointer; padding:2px 6px;">🗑️</button>
+                        <button type="button" class="btn-editar" data-id="${m.id_gasto}" style="cursor:pointer; padding:2px 6px; margin-right:4px;">✏️</button>
+                        <button type="button" class="btn-eliminar" data-id="${m.id_gasto}" style="cursor:pointer; padding:2px 6px;">🗑️</button>
                     </td>
                 `;
                 tablaBody.appendChild(tr);
@@ -268,7 +251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.onclick = (e) => {
                 e.preventDefault();
                 const id = Number(e.currentTarget.getAttribute('data-id'));
-                const gasto = movimientos.find(item => item.id === id);
+                const gasto = movimientos.find(item => item.id_gasto === id);
                 if (gasto) {
                     const formGasto = document.getElementById('formGasto') || document.querySelector('form');
                     const tipoEl = formGasto.querySelector('select');
@@ -278,10 +261,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const descEl = document.getElementById('descripcion') || formGasto.querySelectorAll('input[type="text"]')[1];
                     const btnSubmit = formGasto.querySelector('button');
 
-                    if (tipoEl) tipoEl.value = gasto.tipo_movimiento;
+                    if (tipoEl) tipoEl.value = gasto.tipo;
                     if (montoEl) montoEl.value = gasto.monto;
                     if (catEl) catEl.value = gasto.categoria;
-                    if (fechaEl) fechaEl.value = gasto.fecha;
+                    if (fechaEl) fechaEl.value = gasto.fecha_gasto;
                     if (descEl) descEl.value = gasto.descripcion;
 
                     idGastoEnEdicion = id;
@@ -301,6 +284,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const modalConfirmar = document.getElementById('modalConfirmar');
                 if (modalConfirmar) {
+                    const selectTema = document.getElementById('selectorTema') || document.querySelector('select');
+                    const valTema = selectTema ? selectTema.value.toLowerCase() : '';
+                    const esOnePiece = valTema.includes('piece') || document.body.getAttribute('data-tema') === 'one-piece';
+
+                    const tituloModal = modalConfirmar.querySelector('.modal-titulo') || modalConfirmar.querySelector('h3');
+                    const mensajeModal = modalConfirmar.querySelector('.modal-mensaje') || modalConfirmar.querySelector('p');
+                    const btnAceptar = modalConfirmar.querySelector('#btnAceptarEliminar') || modalConfirmar.querySelector('.btn-danger');
+
+                    if (esOnePiece) {
+                        if (tituloModal) tituloModal.textContent = "🌊 ¿Arrojar al mar?";
+                        if (mensajeModal) mensajeModal.textContent = "¿Estás seguro de que deseas eliminar este movimiento?";
+                        if (btnAceptar) btnAceptar.textContent = "Sí, Arrojar";
+                    } else {
+                        if (tituloModal) tituloModal.textContent = "🗑️ Eliminar Registro";
+                        if (mensajeModal) mensajeModal.textContent = "¿Estás seguro de que deseas eliminar este gasto de la lista?";
+                        if (btnAceptar) btnAceptar.textContent = "Sí, Eliminar";
+                    }
+
                     modalConfirmar.style.display = 'flex';
                 }
             };
@@ -318,14 +319,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.stopPropagation();
 
             if (idGastoAEliminar) {
-                await deshabilitarMovimientoSQL(idGastoAEliminar);
+                window.AppDB.db.run(`UPDATE gastos SET activo = 0 WHERE id_gasto = ?`, [idGastoAEliminar]);
+                await window.AppDB.save();
                 idGastoAEliminar = null;
 
                 const modalConfirmar = document.getElementById('modalConfirmar');
                 if (modalConfirmar) modalConfirmar.style.display = 'none';
 
                 actualizarDashboard();
-                mostrarAlertaCustom("El gasto ha sido arrojado al mar exitosamente.", "🌊 Gasto Eliminado");
+
+                const selectTema = document.getElementById('selectorTema') || document.querySelector('select');
+                const valTema = selectTema ? selectTema.value.toLowerCase() : '';
+                const esOnePiece = valTema.includes('piece') || document.body.getAttribute('data-tema') === 'one-piece';
+
+                if (esOnePiece) {
+                    mostrarAlertaCustom("El gasto ha sido arrojado al mar exitosamente.", "🌊 Gasto Eliminado");
+                } else {
+                    mostrarAlertaCustom("El gasto ha sido eliminado correctamente del sistema.", "Registro Eliminado");
+                }
             }
         };
     }
@@ -398,7 +409,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const catEl = document.getElementById('categoria') || formGasto.querySelectorAll('input[type="text"]')[0];
         const fechaEl = formGasto.querySelector('input[type="date"]');
         const descEl = document.getElementById('descripcion') || formGasto.querySelectorAll('input[type="text"]')[1];
-        const fileEl = formGasto.querySelector('input[type="file"]');
+        const fileEl = formGasto.querySelector('input[type="file"]') || document.getElementById('comprobante');
         const btnSubmit = formGasto.querySelector('button');
 
         const valMonto = montoEl ? parseFloat(montoEl.value) : 0;
@@ -423,36 +434,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = "⏳ Guardando...";
+        }
+
         let urlTicket = await subirComprobanteAPI(fileEl);
+        const idUser = obtenerIdUsuarioActual();
 
         if (idGastoEnEdicion) {
-            const movEditado = {
-                id: idGastoEnEdicion,
-                tipo_movimiento: tipoEl ? tipoEl.value.toLowerCase() : 'egreso',
-                monto: Number(valMonto),
-                categoria: valCat,
-                fecha: valFecha,
-                descripcion: valDesc,
-                url_comprobante: urlTicket
-            };
-            await actualizarMovimientoSQL(movEditado);
+            window.AppDB.db.run(
+                `UPDATE gastos SET tipo = ?, monto = ?, categoria = ?, fecha_gasto = ?, descripcion = ?, url_comprobante = COALESCE(?, url_comprobante) WHERE id_gasto = ?`,
+                [tipoEl ? tipoEl.value.toLowerCase() : 'egreso', Number(valMonto), valCat, valFecha, valDesc, urlTicket, idGastoEnEdicion]
+            );
             idGastoEnEdicion = null;
             if (btnSubmit) btnSubmit.textContent = "Registrar Movimiento";
             mostrarAlertaCustom("¡Movimiento actualizado correctamente!", "💾 Guardado Exitoso");
         } else {
-            const nuevoMov = {
-                id: Date.now(),
-                email_usuario: usuarioActivo,
-                tipo_movimiento: tipoEl ? tipoEl.value.toLowerCase() : 'egreso',
-                monto: Number(valMonto),
-                categoria: valCat,
-                fecha: valFecha,
-                descripcion: valDesc,
-                url_comprobante: urlTicket,
-                estado_activo: true
-            };
-            await insertarMovimientoSQL(nuevoMov);
+            window.AppDB.db.run(
+                `INSERT INTO gastos (id_usuario, descripcion, monto, categoria, tipo, url_comprobante, fecha_gasto) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [idUser, valDesc, Number(valMonto), valCat, tipoEl ? tipoEl.value.toLowerCase() : 'egreso', urlTicket, valFecha]
+            );
             mostrarAlertaCustom("¡Movimiento registrado correctamente!", "🎉 Registro Exitoso");
+        }
+
+        await window.AppDB.save();
+
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Registrar Movimiento";
         }
 
         if (montoEl) montoEl.value = '';
@@ -466,8 +476,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const formEl = document.getElementById('formGasto') || document.querySelector('form');
     if (formEl) {
         formEl.onsubmit = procesarGuardadoGasto;
-        const btnGuardar = formEl.querySelector('button');
-        if (btnGuardar) btnGuardar.onclick = procesarGuardadoGasto;
     }
 
     const btnAbandonar = document.getElementById('btnAbandonar') || document.getElementById('btnLogout') || document.querySelector('.btn-danger');
@@ -524,6 +532,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.addEventListener('cambioTemaModo', actualizarDashboard);
 
-    await initSQLiteDB();
     actualizarDashboard();
 });
