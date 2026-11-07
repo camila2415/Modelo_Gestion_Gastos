@@ -10,34 +10,41 @@
 </head>
 <body class="one-piece-theme dashboard-page" data-tema="one-piece" data-modo="light">
 
-    <header class="navbar" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 30px;">
-        <div class="brand" style="display: flex; align-items: center; gap: 12px;">
-            <img src="assets/img/luffy - Editado.png" alt="Logo" class="auth-logo-inline txt-onepiece" style="max-height: 40px;" onerror="this.style.display='none'">
-            <h2 style="margin: 0;">
-                <span class="txt-onepiece">Grand Line Expenses</span>
-                <span class="txt-normal">Control de Gastos</span>
-            </h2>
-        </div>
+<header class="navbar" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; gap: 15px;">
+    <!-- Marca y Logo -->
+    <div class="brand" style="display: flex; align-items: center; gap: 12px;">
+        <img src="assets/img/luffy - Editado.png" alt="Logo" class="auth-logo-inline txt-onepiece" style="max-height: 40px;" onerror="this.style.display='none'">
+        <h2 style="margin: 0; font-size: 1.3rem;">
+            <span class="txt-onepiece">Grand Line Expenses</span>
+            <span class="txt-normal">Control de Gastos</span>
+        </h2>
+    </div>
 
-        <span id="userEmailDisplay" class="link">usuario@correo.com</span>
-        <span id="dolarDisplay" style="margin-left: 15px; background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 3px 8px; border-radius: 6px; font-weight: bold; font-size: 0.9rem;">💵 USD Oficial: Cargando...</span>
-        <div class="user-controls" style="display: flex; align-items: center; gap: 12px;">
-           <button id="btnDescargarBD" type="button" class="btn-secundario" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; padding: 6px 10px; font-size: 0.82rem; margin: 0 8px;">
-    💾 Descargar BD (.sqlite)
-</button>
-            <select id="selectTemaEstilo" class="select-tema">
-                <option value="one-piece"> One Piece</option>
-                <option value="normal">Normal</option>
-            </select>
+    <!-- Controles de Usuario y Acciones (Todo agrupado a la derecha con gap uniforme) -->
+    <div class="user-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span id="userEmailDisplay" class="link" style="font-size: 0.9rem; margin-right: 4px;">usuario@correo.com</span>
 
-            <button id="btnTemaModo" class="btn-theme">☀️ / 🌙</button>
+        <span id="dolarDisplay" style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; display: inline-flex; align-items: center;">
+            💵 USD Oficial: Cargando...
+        </span>
 
-            <button id="btnLogout" class="btn-delete">
-                <span class="txt-onepiece">⚓ Abandonar Barco</span>
-                <span class="txt-normal">🚪 Cerrar Sesión</span>
-            </button>
-        </div>
-    </header>
+        <button id="btnDescargarBD" type="button" class="btn-secundario" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding: 6px 12px; font-size: 0.85rem; height: 36px;">
+            💾 Descargar BD (.sqlite)
+        </button>
+
+        <select id="selectTemaEstilo" class="select-tema" style="height: 36px; padding: 0 8px; font-size: 0.85rem; cursor: pointer;">
+            <option value="one-piece">🏴‍☠️ One Piece</option>
+            <option value="normal">Normal</option>
+        </select>
+
+        <button id="btnTemaModo" class="btn-theme" style="height: 36px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem;">☀️ / 🌙</button>
+
+        <button id="btnLogout" class="btn-delete" style="height: 36px; padding: 0 12px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; cursor: pointer;">
+            <span class="txt-onepiece">⚓ Abandonar Barco</span>
+            <span class="txt-normal">🚪 Cerrar Sesión</span>
+        </button>
+    </div>
+</header>
 
     <h1 class="titulo-principal" style="text-align: center; margin: 20px 0;">
         <span class="txt-onepiece">📜 Bitácora y Tesorería de la Tripulación</span>
