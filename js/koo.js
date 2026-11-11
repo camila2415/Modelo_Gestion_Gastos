@@ -55,8 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let tiempoBloqueoHasta = null;
     const formLogin = document.getElementById('formLogin') || document.querySelector('.auth-page form');
 
+    // LOGICA DE INICIO DE SESIÓN (LOGIN)
     if (formLogin && !esPaginaRegistro && !esPaginaRecuperar) {
-        formLogin.addEventListener('submit', (e) => {
+        formLogin.addEventListener('submit', async (e) => {
             e.preventDefault(); 
 
             const ahora = Date.now();
@@ -78,17 +79,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const claveGuardada = localStorage.getItem(`sgg_pass_${emailVal}`);
+            if (window.AppDB) await window.AppDB.initDB();
+
             let usuarioValido = false;
 
-            if (claveGuardada) {
-                usuarioValido = (passVal === claveGuardada);
-            } else if (emailVal === 'chopper@gmail.com' && passVal === '123456') {
-                usuarioValido = true;
-            } else {
-                localStorage.setItem(`sgg_pass_${emailVal}`, passVal);
-                usuarioValido = true;
+            if (window.AppDB && window.AppDB.db) {
+                const res = window.AppDB.query(`SELECT * FROM usuarios WHERE email = ? OR username = ?`, [emailVal, emailVal]);
+                if (res.length > 0 && res[0].password_hash === passVal) {
+                    usuarioValido = true;
+                }
             }
+
+            if (!usuarioValido) {
+                const claveGuardada = localStorage.getItem(`sgg_pass_${emailVal}`);
+                if (claveGuardada && passVal === claveGuardada) {
+                    usuarioValido = true;
+                } else if (emailVal === 'chopper@gmail.com' && passVal === 'Hola1234@') {
+                    usuarioValido = true;
+                }
+            }
+
             if (usuarioValido) {
                 intentosFallidos = 0;
                 tiempoBloqueoHasta = null;
@@ -97,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = 'dashboard.html';
             } else {
                 intentosFallidos++;
-
                 if (intentosFallidos >= 3) {
                     const TIEMPO_BLOQUEO_MS = 30000;
                     tiempoBloqueoHasta = Date.now() + TIEMPO_BLOQUEO_MS;
@@ -166,11 +175,21 @@ document.addEventListener('DOMContentLoaded', () => {
         formRegistro.addEventListener('submit', (e) => {
             e.preventDefault();
 
+            const emailInput = document.getElementById('regEmail');
+            const passInput = document.getElementById('passwordRegistro');
+            const confirmPassInput = document.getElementById('repetirPassword');
+
             const emailVal = emailInput ? emailInput.value.trim().toLowerCase() : '';
             const passVal = passInput ? passInput.value : '';
+            const confirmPassVal = confirmPassInput ? confirmPassInput.value : '';
 
             if (!emailVal || !passVal) {
                 mostrarAlertaModal('Por favor, completá todos los campos obligatorios del registro.', '⚠️ REGISTRO INCOMPLETO');
+                return;
+            }
+
+            if (passVal !== confirmPassVal) {
+                mostrarAlertaModal('Las claves del cofre no coinciden. Verificalas e intentá de nuevo.', '⚠️ CLAVES NO COINCIDEN');
                 return;
             }
 
@@ -229,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             font-size: 1.1rem; padding: 4px;
                         " title="Mostrar/Ocultar clave">👁️</button>
                     </div>
-
                     <ul id="listaReqModal" style="
                         text-align: left; font-size: 0.8rem; padding-left: 15px; margin: 10px 0 15px 0;
                         list-style-type: none; line-height: 1.5; color: #e74c3c;
@@ -351,18 +369,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 mostrarAlertaModal(`El correo ${emailVal} no se encuentra registrado en la tripulación. Verificá los datos o registrate primero.`, '🏴‍☠️ USUARIO NO ENCONTRADO');
                 return;
             }
-
-            mostrarPromptModalCustom(emailVal, (nuevaClave) => {
+            mostrarPromptModalCustom(emailVal, async (nuevaClave) => {
                 if (!nuevaClave) {
                     mostrarAlertaModal('No se realizó ningún cambio en la clave del cofre.', '⚠️ OPERACIÓN CANCELADA');
                     return;
                 }
 
-                const claveActual = claveExistente || (esUsuarioDefault ? '123456' : '');
-
-                if (claveActual && nuevaClave === claveActual) {
-                    mostrarAlertaModal('Estás ingresando la contraseña actual. Debes escribir una clave diferente para actualizar el cofre.', '⚠️ CLAVE DUPLICADA');
-                    return;
+                if (window.AppDB && window.AppDB.db) {
+                    window.AppDB.db.run(`UPDATE usuarios SET password_hash = ? WHERE email = ?`, [nuevaClave, emailVal]);
+                    await window.AppDB.save();
                 }
 
                 localStorage.setItem(`sgg_pass_${emailVal}`, nuevaClave);
@@ -463,15 +478,8 @@ document.addEventListener('DOMContentLoaded', () => {
             dolarEl.textContent = '💵 USD Oficial: N/A';
         }
     };
-
     obtenerCotizacionDolar();
-
-    // ==========================================
-    // MANEJO DEL MODAL DE ELIMINACIÓN (#modalConfirmar)
-    // ==========================================
     let idGastoAEliminar = null;
-
-    // Abrir modal al presionar el cesto
     document.addEventListener('click', (e) => {
         const btnEliminar = e.target.closest('.btn-eliminar-gasto, .btn-borrar, [data-accion="eliminar"]');
 
@@ -488,7 +496,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Confirmar borrado
     const btnAceptarEliminar = document.getElementById('btnAceptarEliminar');
     if (btnAceptarEliminar) {
         btnAceptarEliminar.addEventListener('click', async (e) => {
@@ -498,40 +505,31 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!idGastoAEliminar) return;
 
             try {
-                const respuesta = await fetch(`/api/gastos/${idGastoAEliminar}`, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' }
-                });
+                if (window.AppDB && window.AppDB.db) {
+                    window.AppDB.db.run(`UPDATE gastos SET activo = 0 WHERE id_gasto = ?`, [idGastoAEliminar]);
+                    await window.AppDB.save();
+                }
 
                 const modalConfirmar = document.getElementById('modalConfirmar');
                 if (modalConfirmar) modalConfirmar.style.display = 'none';
 
-                if (respuesta.ok) {
-                    if (typeof cargarGastosDesdeBD === 'function') {
-                        cargarGastosDesdeBD();
-                    } else if (typeof renderizarTablaGastos === 'function') {
-                        renderizarTablaGastos();
-                    } else if (typeof cargarGastos === 'function') {
-                        cargarGastos();
-                    } else {
-                        const fila = document.querySelector(`[data-id="${idGastoAEliminar}"]`)?.closest('tr');
-                        if (fila) fila.remove();
-                    }
-
-                    mostrarAlertaModal('El registro ha sido arrojado al mar exitosamente.', '🌊 GASTO ELIMINADO');
+                if (typeof actualizarDashboard === 'function') {
+                    actualizarDashboard();
                 } else {
-                    mostrarAlertaModal('No se pudo eliminar el gasto en la base de datos.', '❌ ERROR AL ELIMINAR');
+                    const fila = document.querySelector(`[data-id="${idGastoAEliminar}"]`)?.closest('tr');
+                    if (fila) fila.remove();
                 }
+
+                mostrarAlertaModal('El registro ha sido arrojado al mar exitosamente.', '🌊 GASTO ELIMINADO');
             } catch (error) {
                 console.error('Error al conectar con la base de datos:', error);
                 const modalConfirmar = document.getElementById('modalConfirmar');
                 if (modalConfirmar) modalConfirmar.style.display = 'none';
-                mostrarAlertaModal('Hubo un error de conexión al intentar borrar el gasto.', '❌ ERROR DE CONEXIÓN');
+                mostrarAlertaModal('Hubo un error al intentar borrar el gasto.', '❌ ERROR DE CONEXIÓN');
             }
         });
     }
 
-    // Cancelar borrado
     const btnCancelarEliminar = document.getElementById('btnCancelarEliminar');
     if (btnCancelarEliminar) {
         btnCancelarEliminar.addEventListener('click', (e) => {
@@ -541,5 +539,4 @@ document.addEventListener('DOMContentLoaded', () => {
             if (modalConfirmar) modalConfirmar.style.display = 'none';
         });
     }
-
 });

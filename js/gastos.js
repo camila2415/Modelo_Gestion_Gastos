@@ -148,10 +148,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     await window.AppDB.initDB();
 
     const obtenerIdUsuarioActual = () => {
-        const res = window.AppDB.query(`SELECT id_usuario FROM usuarios WHERE email = ? OR username = ?`, [usuarioActivo, usuarioActivo]);
-        return res.length > 0 ? res[0].id_usuario : 1;
-    };
+        let res = window.AppDB.query(
+            `SELECT id_usuario FROM usuarios WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)`,
+            [usuarioActivo, usuarioActivo]
+        );
 
+        if (res.length > 0) {
+            return res[0].id_usuario;
+        }
+
+        try {
+            const passGuardada = localStorage.getItem(`sgg_pass_${usuarioActivo}`) || '123456';
+            const usernameNuevo = usuarioActivo.split('@')[0];
+
+            window.AppDB.db.run(
+                `INSERT INTO usuarios (nombre, apellido, dob, email, username, password_hash, question, answer) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [usernameNuevo, 'Usuario', '2000-01-01', usuarioActivo.toLowerCase(), usernameNuevo, passGuardada, 'pregunta', 'respuesta']
+            );
+
+            window.AppDB.save();
+
+            res = window.AppDB.query(
+                `SELECT id_usuario FROM usuarios WHERE LOWER(email) = LOWER(?)`,
+                [usuarioActivo]
+            );
+
+            return res.length > 0 ? res[0].id_usuario : 1;
+        } catch (e) {
+            console.error("Error asignando ID a usuario nuevo:", e);
+            return 1;
+        }
+    };
     const mostrarAlertaCustom = (mensaje, tituloOverride = null) => {
         const modal = document.getElementById('modalAlertaCustom');
         const txtTitulo = document.getElementById('modalAlertaTitulo');
@@ -437,17 +464,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const formGasto = document.getElementById('formGasto') || document.querySelector('form');
         if (!formGasto) return;
 
-        const tipoEl = formGasto.querySelector('select');
-        const montoEl = formGasto.querySelector('input[type="number"]');
-        const catEl = document.getElementById('categoria') || formGasto.querySelectorAll('input[type="text"]')[0];
-        const fechaEl = formGasto.querySelector('input[type="date"]');
-        const descEl = document.getElementById('descripcion') || formGasto.querySelectorAll('input[type="text"]')[1];
+        const tipoEl = document.getElementById('tipo') || formGasto.querySelector('select');
+        const montoEl = document.getElementById('monto') || formGasto.querySelector('input[type="number"]');
+        // Captura precisa de la categoría: busca por ID 'categoria', o por select con name/id, o por el input específico
+        const catEl = document.getElementById('categoria') || formGasto.querySelector('select[name="categoria"]') || document.getElementById('regCategoria');
+        const fechaEl = document.getElementById('fecha') || formGasto.querySelector('input[type="date"]');
+        const descEl = document.getElementById('descripcion') || document.getElementById('desc');
         const fileEl = formGasto.querySelector('input[type="file"]') || document.getElementById('comprobante');
         const btnSubmit = formGasto.querySelector('button');
 
         const valMonto = montoEl ? parseFloat(montoEl.value) : 0;
         const valFecha = fechaEl ? fechaEl.value.trim() : '';
-        const valCat = catEl ? catEl.value.trim() : '';
+        // Obtener el valor de la categoría seleccionada o ingresada sin tomar el input incorrecto
+        const valCat = catEl ? catEl.value.trim() : 'Varios';
         const valDesc = descEl ? descEl.value.trim() : '';
 
         if (isNaN(valMonto) || valMonto <= 0) {
@@ -572,6 +601,80 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnDescargarBD.addEventListener('click', async (e) => {
             e.preventDefault();
             await window.AppDB.downloadDB();
+        });
+    }
+
+    const modalAjustes = document.getElementById('modalAjustes');
+    const btnAbrirAjustes = document.getElementById('btnAbrirAjustes');
+    const btnCerrarAjustes = document.getElementById('btnCerrarAjustes');
+
+    if (btnAbrirAjustes && modalAjustes) {
+        btnAbrirAjustes.addEventListener('click', () => {
+            modalAjustes.style.display = 'flex';
+        });
+    }
+
+    if (btnCerrarAjustes && modalAjustes) {
+        btnCerrarAjustes.addEventListener('click', () => {
+            modalAjustes.style.display = 'none';
+        });
+    }
+
+    window.addEventListener('click', (e) => {
+        if (e.target === modalAjustes) {
+            modalAjustes.style.display = 'none';
+        }
+    });
+
+    const btnImportarBD = document.getElementById('btnImportarBD');
+    const inputImportarBD = document.getElementById('inputImportarBD');
+
+    if (btnImportarBD && inputImportarBD) {
+        btnImportarBD.addEventListener('click', () => {
+            inputImportarBD.click();
+        });
+
+        inputImportarBD.addEventListener('change', async (e) => {
+            const archivo = e.target.files[0];
+            if (!archivo) return;
+
+            try {
+                const reader = new FileReader();
+
+                reader.onload = async function(event) {
+                    const arrayBuffer = event.target.result;
+                    const uInt8Array = new Uint8Array(arrayBuffer);
+
+                    if (window.AppDB) {
+                        const SQL = await initSqlJs({
+                            locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                        });
+
+                        window.AppDB.db = new SQL.Database(uInt8Array);
+
+                        const idUserActual = obtenerIdUsuarioActual();
+
+                        window.AppDB.db.run(`UPDATE gastos SET id_usuario = ? WHERE id_usuario IS NULL OR id_usuario = 0`, [idUserActual]);
+
+                        await window.AppDB.save();
+
+                        actualizarDashboard();
+
+                        if (modalAjustes) {
+                            modalAjustes.style.display = 'none';
+                        }
+
+                        mostrarAlertaCustom("¡Base de datos cargada correctamente manteniendo el aislamiento de cuentas!", "🏴‍☠️ Base de Datos Cargada");
+                    }
+                };
+
+                reader.readAsArrayBuffer(archivo);
+            } catch (err) {
+                console.error('Error al importar la base de datos:', err);
+                mostrarAlertaCustom("Ocurrió un error al intentar leer el archivo .sqlite", "❌ Error de Carga");
+            } finally {
+                inputImportarBD.value = '';
+            }
         });
     }
 });
