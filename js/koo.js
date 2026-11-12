@@ -1,6 +1,21 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    const mostrarAlertaModal = (mensaje, titulo = "⚓ ALERTA DE AVISO") => {
+    // Helper para detectar el tema y modo actuales
+    const obtenerConfigTema = () => {
+        const esOnePiece = (localStorage.getItem('sgg_tema_estilo') || 'one-piece') === 'one-piece';
+        const esDark = (localStorage.getItem('sgg_modo_luz') || 'light') === 'dark';
+        return { esOnePiece, esDark };
+    };
+
+    // Helper para devolver texto según el tema activo
+    const textoTema = (textoNormal, textoOnePiece) => {
+        return obtenerConfigTema().esOnePiece ? textoOnePiece : textoNormal;
+    };
+
+    const mostrarAlertaModal = (mensaje, titulo = null) => {
+        const { esOnePiece, esDark } = obtenerConfigTema();
+        const tituloFinal = titulo || (esOnePiece ? "⚓ ALERTA DE AVISO" : "⚠️ Aviso del Sistema");
+
         let modal = document.getElementById('modalAlertaCustom');
         if (!modal) {
             modal = document.createElement('div');
@@ -11,16 +26,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 justify-content: center; z-index: 9999; backdrop-filter: blur(3px);
             `;
             modal.innerHTML = `
-                <div style="
-                    background: #1a0f07; border: 2px solid #ff9900; border-radius: 12px;
-                    padding: 24px; max-width: 400px; width: 90%; text-align: center;
-                    box-shadow: 0 0 20px rgba(255, 153, 0, 0.4); color: #f0e6d2; font-family: sans-serif;
+                <div id="modalAlertaCaja" style="
+                    border-radius: 12px; padding: 24px; max-width: 400px; width: 90%;
+                    text-align: center; font-family: sans-serif; transition: all 0.2s ease;
                 ">
-                    <h3 id="modalAlertaTitulo" style="color: #ff9900; margin-top: 0; font-size: 1.3rem;">${titulo}</h3>
-                    <p id="modalAlertaTexto" style="margin: 15px 0; line-height: 1.4; color: #e0d0b0;"></p>
+                    <h3 id="modalAlertaTitulo" style="margin-top: 0; font-size: 1.3rem;"></h3>
+                    <p id="modalAlertaTexto" style="margin: 15px 0; line-height: 1.4;"></p>
                     <button id="btnCerrarModalCustom" style="
-                        background: linear-gradient(135deg, #ff9900, #e67e00); border: none;
-                        color: #1a0f07; font-weight: bold; padding: 10px 20px; border-radius: 6px;
+                        border: none; font-weight: bold; padding: 10px 20px; border-radius: 6px;
                         cursor: pointer; font-size: 1rem; width: 100%; margin-top: 10px;
                     ">Aceptar</button>
                 </div>
@@ -32,8 +45,40 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        document.getElementById('modalAlertaTitulo').textContent = titulo;
-        document.getElementById('modalAlertaTexto').textContent = mensaje;
+        // Aplicar colores dinámicos según Tema y Modo
+        const caja = document.getElementById('modalAlertaCaja');
+        const tituloEl = document.getElementById('modalAlertaTitulo');
+        const textoEl = document.getElementById('modalAlertaTexto');
+        const btnCerrar = document.getElementById('btnCerrarModalCustom');
+
+        if (esOnePiece) {
+            caja.style.background = '#1a0f07';
+            caja.style.border = '2px solid #ff9900';
+            caja.style.boxShadow = '0 0 20px rgba(255, 153, 0, 0.4)';
+            tituloEl.style.color = '#ff9900';
+            textoEl.style.color = '#e0d0b0';
+            btnCerrar.style.background = 'linear-gradient(135deg, #ff9900, #e67e00)';
+            btnCerrar.style.color = '#1a0f07';
+        } else if (esDark) {
+            caja.style.background = '#1e293b';
+            caja.style.border = '2px solid #3b82f6';
+            caja.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.35)';
+            tituloEl.style.color = '#60a5fa';
+            textoEl.style.color = '#f1f5f9';
+            btnCerrar.style.background = '#3b82f6';
+            btnCerrar.style.color = '#ffffff';
+        } else {
+            caja.style.background = '#ffffff';
+            caja.style.border = '2px solid #2563eb';
+            caja.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.2)';
+            tituloEl.style.color = '#1d4ed8';
+            textoEl.style.color = '#334155';
+            btnCerrar.style.background = '#2563eb';
+            btnCerrar.style.color = '#ffffff';
+        }
+
+        tituloEl.textContent = tituloFinal;
+        textoEl.textContent = mensaje;
         modal.style.display = 'flex';
     };
 
@@ -42,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
         usuarioGuardado = 'chopper@gmail.com';
         localStorage.setItem('sgg_usuario_activo', usuarioGuardado);
     }
-
     const userEmailDisplay = document.getElementById('userEmailDisplay');
     if (userEmailDisplay) {
         userEmailDisplay.textContent = usuarioGuardado;
@@ -89,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     usuarioValido = true;
                 }
             }
-
             if (!usuarioValido) {
                 const claveGuardada = localStorage.getItem(`sgg_pass_${emailVal}`);
                 if (claveGuardada && passVal === claveGuardada) {
@@ -167,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         };
-
         if (emailInput) emailInput.addEventListener('input', validarRequisitosRegistro);
         if (passInput) passInput.addEventListener('input', validarRequisitosRegistro);
         if (confirmPassInput) confirmPassInput.addEventListener('input', validarRequisitosRegistro);
@@ -187,9 +229,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 mostrarAlertaModal('Por favor, completá todos los campos obligatorios del registro.', '⚠️ REGISTRO INCOMPLETO');
                 return;
             }
-
             if (passVal !== confirmPassVal) {
-                mostrarAlertaModal('Las claves del cofre no coinciden. Verificalas e intentá de nuevo.', '⚠️ CLAVES NO COINCIDEN');
+                mostrarAlertaModal(
+                    textoTema(
+                        'Las contraseñas no coinciden. Verificalas e intentá de nuevo.',
+                        'Las claves del cofre no coinciden. Verificalas e intentá de nuevo.'
+                    ),
+                    textoTema('⚠️ CONTRASEÑAS NO COINCIDEN', '⚠️ CLAVES NO COINCIDEN')
+                );
                 return;
             }
 
@@ -197,14 +244,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const esUsuarioDefault = (emailVal === 'chopper@gmail.com');
 
             if (claveExistente || esUsuarioDefault) {
-                mostrarAlertaModal(`El correo "${emailVal}" ya se encuentra registrado en la tripulación. Si olvidaste tu clave, seleccioná la opción de recuperar.`, '🏴‍☠️ CORREO YA REGISTRADO');
+                mostrarAlertaModal(
+                    textoTema(
+                        `El correo "${emailVal}" ya se encuentra registrado en el sistema. Si olvidaste tu contraseña, seleccioná la opción de recuperar.`,
+                        `El correo "${emailVal}" ya se encuentra registrado en la tripulación. Si olvidaste tu clave, seleccioná la opción de recuperar.`
+                    ),
+                    textoTema('⚠️ CORREO YA REGISTRADO', '🏴‍☠️ CORREO YA REGISTRADO')
+                );
                 return;
             }
 
             localStorage.setItem('sgg_usuario_activo', emailVal);
             localStorage.setItem(`sgg_pass_${emailVal}`, passVal);
 
-            mostrarAlertaModal('¡Te has registrado con éxito en la tripulación! Redirigiendo al puerto...', '⚔️ REGISTRO EXITOSO');
+            mostrarAlertaModal(
+                textoTema(
+                    '¡Te has registrado con éxito en el sistema! Redirigiendo al panel...',
+                    '¡Te has registrado con éxito en la tripulación! Redirigiendo al puerto...'
+                ),
+                textoTema('✅ REGISTRO EXITOSO', '⚔️ REGISTRO EXITOSO')
+            );
 
             setTimeout(() => {
                 window.location.href = 'dashboard.html';
@@ -213,6 +272,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const mostrarPromptModalCustom = (emailVal, callback) => {
+        const { esOnePiece, esDark } = obtenerConfigTema();
+
         let modal = document.getElementById('modalPromptCustom');
         if (!modal) {
             modal = document.createElement('div');
@@ -223,28 +284,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 justify-content: center; z-index: 9999; backdrop-filter: blur(3px);
             `;
             modal.innerHTML = `
-                <div style="
-                    background: #1a0f07; border: 2px solid #ff9900; border-radius: 12px;
-                    padding: 20px; max-width: 420px; width: 90%; text-align: center;
-                    box-shadow: 0 0 20px rgba(255, 153, 0, 0.4); color: #f0e6d2; font-family: sans-serif;
+                <div id="modalPromptCaja" style="
+                    border-radius: 12px; padding: 20px; max-width: 420px; width: 90%;
+                    text-align: center; font-family: sans-serif; transition: all 0.2s ease;
                 ">
-                    <h3 style="color: #ff9900; margin-top: 0; font-size: 1.25rem;">🕊️ VIVRE CARD RECIBIDA</h3>
-                    <p style="margin: 5px 0; font-size: 0.9rem; color: #e0d0b0;">
-                        Señal enviada para: <strong id="promptUserEmail" style="color: #ffcc00;"></strong>
+                    <h3 id="promptTitulo" style="margin-top: 0; font-size: 1.25rem;"></h3>
+                    <p id="promptSubtitulo" style="margin: 5px 0; font-size: 0.9rem;">
+                        <span id="promptSubtituloTexto"></span> <strong id="promptUserEmail"></strong>
                     </p>
-                    <label style="display: block; margin-top: 10px; text-align: left; font-size: 0.85rem; color: #ff9900; font-weight: bold;">
-                        Ingresá tu nueva clave del cofre:
-                    </label>
+                    <label id="promptLabel" style="display: block; margin-top: 10px; text-align: left; font-size: 0.85rem; font-weight: bold;"></label>
 
                     <div style="position: relative; margin-top: 5px; margin-bottom: 10px;">
                         <input type="password" id="inputNuevaClaveCustom" placeholder="Nueva contraseña" style="
-                            width: 100%; padding: 10px 40px 10px 10px;
-                            background: #0d0704; border: 1px solid #ff9900; border-radius: 6px;
-                            color: #ffffff; font-size: 0.95rem; box-sizing: border-box; outline: none;
+                            width: 100%; padding: 10px 40px 10px 10px; border-radius: 6px;
+                            font-size: 0.95rem; box-sizing: border-box; outline: none;
                         " />
                         <button type="button" id="btnToggleClaveModal" style="
                             position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-                            background: none; border: none; color: #ff9900; cursor: pointer;
+                            background: none; border: none; cursor: pointer;
                             font-size: 1.1rem; padding: 4px;
                         " title="Mostrar/Ocultar clave">👁️</button>
                     </div>
@@ -258,16 +315,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <li id="reqNum">❌ Un número</li>
                         <li id="reqSimbolo">❌ Un símbolo especial</li>
                     </ul>
-
                     <div style="display: flex; gap: 10px;">
                         <button id="btnCancelarPrompt" style="
-                            flex: 1; background: #332211; border: 1px solid #664422;
-                            color: #d0c0a0; font-weight: bold; padding: 10px; border-radius: 6px;
+                            flex: 1; font-weight: bold; padding: 10px; border-radius: 6px;
                             cursor: pointer; font-size: 0.95rem;
                         ">Cancelar</button>
                         <button id="btnGuardarPrompt" style="
-                            flex: 1; background: linear-gradient(135deg, #ff9900, #e67e00); border: none;
-                            color: #1a0f07; font-weight: bold; padding: 10px; border-radius: 6px;
+                            flex: 1; border: none; font-weight: bold; padding: 10px; border-radius: 6px;
                             cursor: pointer; font-size: 0.95rem; opacity: 0.6;
                         ">Guardar Clave</button>
                     </div>
@@ -276,11 +330,77 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(modal);
         }
 
-        document.getElementById('promptUserEmail').textContent = emailVal;
+        // Aplicar textos y colores según el tema activo
+        const caja = document.getElementById('modalPromptCaja');
+        const tituloEl = document.getElementById('promptTitulo');
+        const subtituloEl = document.getElementById('promptSubtitulo');
+        const subtituloTextoEl = document.getElementById('promptSubtituloTexto');
+        const emailEl = document.getElementById('promptUserEmail');
+        const labelEl = document.getElementById('promptLabel');
         const inputClave = document.getElementById('inputNuevaClaveCustom');
         const btnToggleClave = document.getElementById('btnToggleClaveModal');
+        const btnCancelar = document.getElementById('btnCancelarPrompt');
         const btnGuardar = document.getElementById('btnGuardarPrompt');
 
+        tituloEl.textContent = esOnePiece ? '🕊️ VIVRE CARD RECIBIDA' : '🔑 RESTABLECER CONTRASEÑA';
+        subtituloTextoEl.textContent = esOnePiece ? 'Señal enviada para:' : 'Recuperación solicitada para:';
+        labelEl.textContent = esOnePiece ? 'Ingresá tu nueva clave del cofre:' : 'Ingresá tu nueva contraseña:';
+        btnGuardar.textContent = esOnePiece ? 'Guardar Clave' : 'Guardar Contraseña';
+
+        if (esOnePiece) {
+            caja.style.background = '#1a0f07';
+            caja.style.border = '2px solid #ff9900';
+            caja.style.boxShadow = '0 0 20px rgba(255, 153, 0, 0.4)';
+            tituloEl.style.color = '#ff9900';
+            subtituloEl.style.color = '#e0d0b0';
+            emailEl.style.color = '#ffcc00';
+            labelEl.style.color = '#ff9900';
+            inputClave.style.background = '#0d0704';
+            inputClave.style.border = '1px solid #ff9900';
+            inputClave.style.color = '#ffffff';
+            btnToggleClave.style.color = '#ff9900';
+            btnCancelar.style.background = '#332211';
+            btnCancelar.style.border = '1px solid #664422';
+            btnCancelar.style.color = '#d0c0a0';
+            btnGuardar.style.background = 'linear-gradient(135deg, #ff9900, #e67e00)';
+            btnGuardar.style.color = '#1a0f07';
+        } else if (esDark) {
+            caja.style.background = '#1e293b';
+            caja.style.border = '2px solid #3b82f6';
+            caja.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.35)';
+            tituloEl.style.color = '#60a5fa';
+            subtituloEl.style.color = '#cbd5e1';
+            emailEl.style.color = '#93c5fd';
+            labelEl.style.color = '#60a5fa';
+            inputClave.style.background = '#0f172a';
+            inputClave.style.border = '1px solid #3b82f6';
+            inputClave.style.color = '#ffffff';
+            btnToggleClave.style.color = '#60a5fa';
+            btnCancelar.style.background = '#334155';
+            btnCancelar.style.border = '1px solid #475569';
+            btnCancelar.style.color = '#e2e8f0';
+            btnGuardar.style.background = '#3b82f6';
+            btnGuardar.style.color = '#ffffff';
+        } else {
+            caja.style.background = '#ffffff';
+            caja.style.border = '2px solid #2563eb';
+            caja.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.2)';
+            tituloEl.style.color = '#1d4ed8';
+            subtituloEl.style.color = '#475569';
+            emailEl.style.color = '#1e40af';
+            labelEl.style.color = '#1d4ed8';
+            inputClave.style.background = '#f8fafc';
+            inputClave.style.border = '1px solid #94a3b8';
+            inputClave.style.color = '#0f172a';
+            btnToggleClave.style.color = '#2563eb';
+            btnCancelar.style.background = '#e2e8f0';
+            btnCancelar.style.border = '1px solid #cbd5e1';
+            btnCancelar.style.color = '#334155';
+            btnGuardar.style.background = '#2563eb';
+            btnGuardar.style.color = '#ffffff';
+        }
+
+        emailEl.textContent = emailVal;
         inputClave.value = '';
         inputClave.type = 'password';
         btnToggleClave.textContent = '👁️';
@@ -303,7 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     el.style.color = cumple ? '#2ecc71' : '#e74c3c';
                 }
             };
-
             setReq('reqMin8', min8, 'Mínimo 8 caracteres');
             setReq('reqMayus', mayus, 'Una letra mayúscula');
             setReq('reqMinus', minus, 'Una letra minúscula');
@@ -313,9 +432,8 @@ document.addEventListener('DOMContentLoaded', () => {
             esClaveValida = min8 && mayus && minus && num && sim;
             btnGuardar.style.opacity = esClaveValida ? '1' : '0.6';
         };
-
         evaluarRequisitosModal();
-        inputClave.addEventListener('input', evaluarRequisitosModal);
+        inputClave.oninput = evaluarRequisitosModal;
 
         const nuevoToggle = btnToggleClave.cloneNode(true);
         btnToggleClave.parentNode.replaceChild(nuevoToggle, btnToggleClave);
@@ -326,8 +444,6 @@ document.addEventListener('DOMContentLoaded', () => {
             inputClave.type = esPassword ? 'text' : 'password';
             nuevoToggle.textContent = esPassword ? '🙈' : '👁️';
         });
-
-        const btnCancelar = document.getElementById('btnCancelarPrompt');
 
         const nuevoGuardar = btnGuardar.cloneNode(true);
         const nuevoCancelar = btnCancelar.cloneNode(true);
@@ -343,7 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.style.display = 'none';
             callback(clave);
         });
-
         nuevoCancelar.addEventListener('click', () => {
             modal.style.display = 'none';
             callback(null);
@@ -358,7 +473,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const emailVal = emailInput ? emailInput.value.trim().toLowerCase() : '';
 
             if (!emailVal) {
-                mostrarAlertaModal('Por favor, ingresá tu correo electrónico para enviar la señal de auxilio.', '⚠️ EMAIL REQUERIDO');
+                mostrarAlertaModal(
+                    textoTema(
+                        'Por favor, ingresá tu correo electrónico para recuperar tu contraseña.',
+                        'Por favor, ingresá tu correo electrónico para enviar la señal de auxilio.'
+                    ),
+                    '⚠️ EMAIL REQUERIDO'
+                );
                 return;
             }
 
@@ -366,12 +487,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const esUsuarioDefault = (emailVal === 'chopper@gmail.com');
 
             if (!claveExistente && !esUsuarioDefault) {
-                mostrarAlertaModal(`El correo ${emailVal} no se encuentra registrado en la tripulación. Verificá los datos o registrate primero.`, '🏴‍☠️ USUARIO NO ENCONTRADO');
+                mostrarAlertaModal(
+                    textoTema(
+                        `El correo ${emailVal} no se encuentra registrado en el sistema. Verificá los datos o registrate primero.`,
+                        `El correo ${emailVal} no se encuentra registrado en la tripulación. Verificá los datos o registrate primero.`
+                    ),
+                    textoTema('⚠️ USUARIO NO ENCONTRADO', '🏴‍☠️ USUARIO NO ENCONTRADO')
+                );
                 return;
             }
             mostrarPromptModalCustom(emailVal, async (nuevaClave) => {
                 if (!nuevaClave) {
-                    mostrarAlertaModal('No se realizó ningún cambio en la clave del cofre.', '⚠️ OPERACIÓN CANCELADA');
+                    mostrarAlertaModal(
+                        textoTema(
+                            'No se realizó ningún cambio en la contraseña.',
+                            'No se realizó ningún cambio en la clave del cofre.'
+                        ),
+                        '⚠️ OPERACIÓN CANCELADA'
+                    );
                     return;
                 }
 
@@ -379,10 +512,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.AppDB.db.run(`UPDATE usuarios SET password_hash = ? WHERE email = ?`, [nuevaClave, emailVal]);
                     await window.AppDB.save();
                 }
-
                 localStorage.setItem(`sgg_pass_${emailVal}`, nuevaClave);
 
-                mostrarAlertaModal(`¡Clave restablecida con éxito para ${emailVal}! Ahora podés embarcar con tu nueva contraseña.`, '⚔️ CLAVE RESTABLECIDA');
+                mostrarAlertaModal(
+                    textoTema(
+                        `¡Contraseña restablecida con éxito para ${emailVal}! Ahora podés iniciar sesión con tu nueva contraseña.`,
+                        `¡Clave restablecida con éxito para ${emailVal}! Ahora podés embarcar con tu nueva contraseña.`
+                    ),
+                    textoTema('✅ CONTRASEÑA RESTABLECIDA', '⚔️ CLAVE RESTABLECIDA')
+                );
 
                 setTimeout(() => {
                     window.location.href = 'index.html';
@@ -435,7 +573,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             document.body.classList.remove('dark-mode');
         }
-
         const selectTema = document.getElementById('selectTemaEstilo');
         if (selectTema) selectTema.value = temaEstilo;
 
@@ -479,6 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     obtenerCotizacionDolar();
+
     let idGastoAEliminar = null;
     document.addEventListener('click', (e) => {
         const btnEliminar = e.target.closest('.btn-eliminar-gasto, .btn-borrar, [data-accion="eliminar"]');
@@ -519,8 +657,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const fila = document.querySelector(`[data-id="${idGastoAEliminar}"]`)?.closest('tr');
                     if (fila) fila.remove();
                 }
-
-                mostrarAlertaModal('El registro ha sido arrojado al mar exitosamente.', '🌊 GASTO ELIMINADO');
+                mostrarAlertaModal(
+                    textoTema(
+                        'El registro ha sido eliminado exitosamente.',
+                        'El registro ha sido arrojado al mar exitosamente.'
+                    ),
+                    textoTema('🗑️ GASTO ELIMINADO', '🌊 GASTO ELIMINADO')
+                );
             } catch (error) {
                 console.error('Error al conectar con la base de datos:', error);
                 const modalConfirmar = document.getElementById('modalConfirmar');

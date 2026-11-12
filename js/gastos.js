@@ -5,7 +5,7 @@ window.AppDB = {
 
     initDB: async function() {
         if (this.db) return;
-        
+       
         const SQL = await initSqlJs({
             locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
         });
@@ -34,12 +34,12 @@ window.AppDB = {
                     id_gasto INTEGER PRIMARY KEY AUTOINCREMENT,
                     id_usuario INTEGER NOT NULL,  
                     descripcion TEXT NOT NULL,
-                    monto REAL NOT NULL CHECK (monto > 0), 
+                    monto REAL NOT NULL CHECK (monto > 0),
                     categoria TEXT NOT NULL,
                     tipo TEXT NOT NULL DEFAULT 'egreso',
-                    url_comprobante TEXT DEFAULT NULL,   
+                    url_comprobante TEXT DEFAULT NULL,  
                     fecha_gasto DATE NOT NULL,
-                    activo INTEGER DEFAULT 1,             
+                    activo INTEGER DEFAULT 1,            
                     fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE RESTRICT
                 );
@@ -50,7 +50,7 @@ window.AppDB = {
 
             this.db.run(`
                 INSERT INTO usuarios (nombre, apellido, dob, email, username, password_hash, question, answer)
-                VALUES 
+                VALUES
                 ('Chopper', 'Doctor', '1990-01-01', 'chopper@gmail.com', 'chopper', 'Hola1234@', 'mascota', 'poroto');
             `);
 
@@ -73,8 +73,8 @@ window.AppDB = {
 
     save: async function() {
         try {
-            const data = this.db.export(); 
-            
+            const data = this.db.export();
+           
             const base64Str = btoa(String.fromCharCode.apply(null, data));
             localStorage.setItem('sgg_db_backup', base64Str);
 
@@ -100,34 +100,32 @@ window.AppDB = {
     },
 
     downloadDB: async function() {
-    try {
-        // Re-inicializa si no existe en memoria
-        if (!this.db) {
-            await this.initDB();
-        }
+        try {
+            if (!this.db) {
+                await this.initDB();
+            }
 
-        const data = this.db.export();
-        const blob = new Blob([data.buffer || data], { type: 'application/x-sqlite3' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'sgg_database.sqlite';
-        document.body.appendChild(a);
-        
-        a.click();
-        
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 300);
-    } catch (error) {
-        console.error("Error al descargar la base de datos:", error);
-        alert("No se pudo exportar la base de datos.");
-    }
-},
-   
+            const data = this.db.export();
+            const blob = new Blob([data.buffer || data], { type: 'application/x-sqlite3' });
+            const url = URL.createObjectURL(blob);
+           
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'sgg_database.sqlite';
+            document.body.appendChild(a);
+           
+            a.click();
+           
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 300);
+        } catch (error) {
+            console.error("Error al descargar la base de datos:", error);
+            alert("No se pudo exportar la base de datos.");
+        }
+    },
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -144,6 +142,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const userEmailDisplay = document.getElementById('userEmailDisplay');
     if (userEmailDisplay) userEmailDisplay.textContent = usuarioActivo;
+
+    // Helper centralizado para detectar el tema y modo activos
+    const obtenerEstadoVisual = () => {
+        const tema = document.body.getAttribute('data-tema') || localStorage.getItem('sgg_tema_estilo') || 'one-piece';
+        const modo = document.body.getAttribute('data-modo') || localStorage.getItem('sgg_modo_luz') || 'light';
+        return {
+            esOnePiece: tema === 'one-piece',
+            esDark: modo === 'dark'
+        };
+    };
 
     await window.AppDB.initDB();
 
@@ -179,29 +187,74 @@ document.addEventListener('DOMContentLoaded', async () => {
             return 1;
         }
     };
+
     const mostrarAlertaCustom = (mensaje, tituloOverride = null) => {
-        const modal = document.getElementById('modalAlertaCustom');
-        const txtTitulo = document.getElementById('modalAlertaTitulo');
-        const txtMensaje = document.getElementById('modalAlertaMensaje');
-        const btnAceptar = document.getElementById('btnAceptarAlertaCustom');
+        const { esOnePiece, esDark } = obtenerEstadoVisual();
+        const tituloDefecto = esOnePiece ? '⚓ Aviso del Navegante' : '⚠️ Atención del Sistema';
 
-        const selectTema = document.getElementById('selectorTema') || document.querySelector('select');
-        const valTema = selectTema ? selectTema.value.toLowerCase() : '';
-        const esOnePiece = valTema.includes('piece') || document.body.getAttribute('data-tema') === 'one-piece';
+        let modal = document.getElementById('modalAlertaDashboard');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modalAlertaDashboard';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                background: rgba(0, 0, 0, 0.75); display: flex; align-items: center;
+                justify-content: center; z-index: 9999; backdrop-filter: blur(3px);
+            `;
+            modal.innerHTML = `
+                <div id="modalAlertaDashCaja" style="
+                    border-radius: 12px; padding: 24px; max-width: 400px; width: 90%;
+                    text-align: center; font-family: sans-serif; transition: all 0.2s ease;
+                ">
+                    <h3 id="modalAlertaDashTitulo" style="margin-top: 0; font-size: 1.3rem;"></h3>
+                    <p id="modalAlertaDashMensaje" style="margin: 15px 0; line-height: 1.4;"></p>
+                    <button id="btnAceptarAlertaDash" style="
+                        border: none; font-weight: bold; padding: 10px 20px; border-radius: 6px;
+                        cursor: pointer; font-size: 1rem; width: 100%; margin-top: 10px;
+                    ">Aceptar</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
 
-        const tituloDefecto = esOnePiece ? '⚠️ Aviso del Navegante' : '⚠️ Atención del Sistema';
-
-        if (modal && txtMensaje) {
-            if (txtTitulo) txtTitulo.textContent = tituloOverride || tituloDefecto;
-            txtMensaje.textContent = mensaje;
-            modal.style.display = 'flex';
-
-            if (btnAceptar) {
-                btnAceptar.onclick = () => { modal.style.display = 'none'; };
-            }
-        } else {
-            alert(`${tituloOverride || tituloDefecto}\n\n${mensaje}`);
+            document.getElementById('btnAceptarAlertaDash').addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
         }
+
+        const caja = document.getElementById('modalAlertaDashCaja');
+        const txtTitulo = document.getElementById('modalAlertaDashTitulo');
+        const txtMensaje = document.getElementById('modalAlertaDashMensaje');
+        const btnAceptar = document.getElementById('btnAceptarAlertaDash');
+
+        if (esOnePiece) {
+            caja.style.background = '#1a0f07';
+            caja.style.border = '2px solid #ff9900';
+            caja.style.boxShadow = '0 0 20px rgba(255, 153, 0, 0.4)';
+            txtTitulo.style.color = '#ff9900';
+            txtMensaje.style.color = '#e0d0b0';
+            btnAceptar.style.background = 'linear-gradient(135deg, #ff9900, #e67e00)';
+            btnAceptar.style.color = '#1a0f07';
+        } else if (esDark) {
+            caja.style.background = '#1e293b';
+            caja.style.border = '2px solid #3b82f6';
+            caja.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.35)';
+            txtTitulo.style.color = '#60a5fa';
+            txtMensaje.style.color = '#f1f5f9';
+            btnAceptar.style.background = '#3b82f6';
+            btnAceptar.style.color = '#ffffff';
+        } else {
+            caja.style.background = '#ffffff';
+            caja.style.border = '2px solid #2563eb';
+            caja.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.2)';
+            txtTitulo.style.color = '#1d4ed8';
+            txtMensaje.style.color = '#334155';
+            btnAceptar.style.background = '#2563eb';
+            btnAceptar.style.color = '#ffffff';
+        }
+
+        txtTitulo.textContent = tituloOverride || tituloDefecto;
+        txtMensaje.textContent = mensaje;
+        modal.style.display = 'flex';
     };
 
     const subirComprobanteAPI = async (fileInput) => {
@@ -212,7 +265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const formData = new FormData();
             formData.append('image', archivo);
-            
+           
             const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
                 method: 'POST',
                 body: formData
@@ -250,10 +303,125 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
+    const renderizarGraficos = (egresosPorCat, ingresos, egresos) => {
+        if (typeof Chart === 'undefined') return;
+
+        const { esOnePiece, esDark } = obtenerEstadoVisual();
+
+        const colorTexto = esDark ? '#f1f5f9' : '#0f172a';
+        const colorGrilla = esDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.1)';
+
+        // Etiquetas dinámicas según tema activo
+        const etiquetasCategorias = {
+            'Comida': esOnePiece ? '🍖 Comida / Provisiones' : '🍽️ Alimentos y Suministros',
+            'Navegación': esOnePiece ? '⚓ Navegación' : '💰 Ahorro / Emergencia',
+            'Medicina': esOnePiece ? '💊 Medicina' : '🏥 Salud y Medicina',
+            'Entretenimiento': esOnePiece ? '🎵 Entretenimiento' : '🎬 Entretenimiento',
+            'Mapas': esOnePiece ? '🗺️ Mapas y Log Pose' : '📚 Educación',
+            'Tesoro': esOnePiece ? '💎 Tesoro' : '💵 Ingresos / Salarios',
+            'Varios': esOnePiece ? '📌 Varios' : '📌 Gastos Varios'
+        };
+
+        // Paleta de colores adaptada al tema
+        const paletaColores = esOnePiece
+            ? ['#f59e0b', '#ef4444', '#eab308', '#d97706', '#b45309', '#fb923c', '#78350f']
+            : ['#3b82f6', '#10b981', '#8b5cf6', '#f43f5e', '#06b6d4', '#f59e0b', '#64748b'];
+
+        const canvasDona = document.getElementById('chartDona') || document.querySelectorAll('canvas')[0];
+        if (canvasDona) {
+            if (chartDona) chartDona.destroy();
+
+            const catsCrudas = Object.keys(egresosPorCat);
+            const vals = Object.values(egresosPorCat);
+            const hayDatos = catsCrudas.length > 0 && vals.some(v => v > 0);
+
+            const labelsFormateadas = hayDatos
+                ? catsCrudas.map(c => etiquetasCategorias[c] || c)
+                : [esOnePiece ? 'Sin egresos en la bitácora' : 'Sin gastos registrados'];
+
+            chartDona = new Chart(canvasDona, {
+                type: 'doughnut',
+                data: {
+                    labels: labelsFormateadas,
+                    datasets: [{
+                        data: hayDatos ? vals : [1],
+                        backgroundColor: hayDatos ? paletaColores : [esDark ? '#334155' : '#cbd5e1'],
+                        borderColor: esDark ? '#1e293b' : '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: colorTexto, padding: 14, font: { size: 12 } }
+                        },
+                        tooltip: {
+                            enabled: hayDatos,
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.label}: $${Number(ctx.raw).toFixed(2)}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const canvasBarras = document.getElementById('chartBarras') || document.querySelectorAll('canvas')[1];
+        if (canvasBarras) {
+            if (chartBarras) chartBarras.destroy();
+
+            const labelEgreso = esOnePiece ? 'Egresos' : 'Gastos';
+
+            chartBarras = new Chart(canvasBarras, {
+                type: 'bar',
+                data: {
+                    labels: ['Ingresos', labelEgreso],
+                    datasets: [{
+                        label: esOnePiece ? 'Monto (Bellys / $)' : 'Monto ($)',
+                        data: [ingresos, egresos],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderRadius: 6,
+                        maxBarThickness: 70
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ` $${Number(ctx.raw).toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: colorTexto, font: { weight: 'bold' } },
+                            grid: { display: false }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: colorTexto,
+                                callback: (value) => '$' + value
+                            },
+                            grid: { color: colorGrilla }
+                        }
+                    }
+                }
+            });
+        }
+    };
+
     const actualizarDashboard = () => {
+        const { esOnePiece } = obtenerEstadoVisual();
         const idUser = obtenerIdUsuarioActual();
         const movimientos = window.AppDB.query(
-            `SELECT * FROM gastos WHERE id_usuario = ? AND activo = 1 ORDER BY fecha_gasto DESC, id_gasto DESC`, 
+            `SELECT * FROM gastos WHERE id_usuario = ? AND activo = 1 ORDER BY fecha_gasto DESC, id_gasto DESC`,
             [idUser]
         );
 
@@ -261,6 +429,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         let totalIngresos = 0;
         let totalEgresos = 0;
         let egresosPorCat = {};
+
+        const nombresCategoriasTabla = {
+            'Comida': esOnePiece ? '🍖 Comida' : '🍽️ Alimentos y Suministros',
+            'Navegación': esOnePiece ? '⚓ Navegación' : '💰 Ahorro / Emergencia',
+            'Medicina': esOnePiece ? '💊 Medicina' : '🏥 Salud y Medicina',
+            'Entretenimiento': esOnePiece ? '🎵 Entretenimiento' : '🎬 Entretenimiento',
+            'Mapas': esOnePiece ? '🗺️ Mapas' : '📚 Educación',
+            'Tesoro': esOnePiece ? '💎 Tesoro' : '💵 Ingresos / Salarios',
+            'Varios': esOnePiece ? '📌 Varios' : '📌 Gastos Varios'
+        };
 
         const tablaBody = document.getElementById('tablaGastosBody') || document.querySelector('tbody');
         if (tablaBody) tablaBody.innerHTML = '';
@@ -285,10 +463,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (tablaBody) {
                 const tr = document.createElement('tr');
+                const catMostrar = nombresCategoriasTabla[m.categoria] || m.categoria || 'General';
+                const tipoMostrar = esIngreso
+                    ? '🟢 Ingreso'
+                    : (esOnePiece ? '🔴 Egreso' : '🔴 Gasto');
+
                 tr.innerHTML = `
                     <td>${m.fecha_gasto || '-'}</td>
-                    <td><b style="color:${esIngreso ? '#10b981' : '#ef4444'}">${esIngreso ? '🟢 Ingreso' : '🔴 Egreso'}</b></td>
-                    <td>${m.categoria || 'General'}</td>
+                    <td><b style="color:${esIngreso ? '#10b981' : '#ef4444'}">${tipoMostrar}</b></td>
+                    <td>${catMostrar}</td>
                     <td>${m.descripcion || ''}</td>
                     <td style="font-weight:bold; color:${esIngreso ? '#10b981' : '#ef4444'}">${esIngreso ? '+' : '-'}$${monto.toFixed(2)}</td>
                     <td>${m.url_comprobante ? `<a href="${m.url_comprobante}" target="_blank" style="color:#3b82f6;">📎 Ticket</a>` : 'Sin ticket'}</td>
@@ -314,12 +497,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const gasto = movimientos.find(item => item.id_gasto === id);
                 if (gasto) {
                     const formGasto = document.getElementById('formGasto') || document.querySelector('form');
-                    const tipoEl = formGasto.querySelector('select');
-                    const montoEl = formGasto.querySelector('input[type="number"]');
-                    const catEl = document.getElementById('categoria') || formGasto.querySelectorAll('input[type="text"]')[0];
-                    const fechaEl = formGasto.querySelector('input[type="date"]');
-                    const descEl = document.getElementById('descripcion') || formGasto.querySelectorAll('input[type="text"]')[1];
-                    const btnSubmit = formGasto.querySelector('button');
+                    const tipoEl = document.getElementById('tipoMovimiento') || formGasto.querySelector('select');
+                    const montoEl = document.getElementById('monto') || formGasto.querySelector('input[type="number"]');
+                    const catEl = document.getElementById('categoria');
+                    const fechaEl = document.getElementById('fecha') || formGasto.querySelector('input[type="date"]');
+                    const descEl = document.getElementById('descripcion');
+                    const btnSubmit = document.getElementById('btnGuardar') || formGasto.querySelector('button[type="submit"]');
 
                     if (tipoEl) tipoEl.value = gasto.tipo;
                     if (montoEl) montoEl.value = gasto.monto;
@@ -344,24 +527,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const modalConfirmar = document.getElementById('modalConfirmar');
                 if (modalConfirmar) {
-                    const selectTema = document.getElementById('selectorTema') || document.querySelector('select');
-                    const valTema = selectTema ? selectTema.value.toLowerCase() : '';
-                    const esOnePiece = valTema.includes('piece') || document.body.getAttribute('data-tema') === 'one-piece';
-
-                    const tituloModal = modalConfirmar.querySelector('.modal-titulo') || modalConfirmar.querySelector('h3');
-                    const mensajeModal = modalConfirmar.querySelector('.modal-mensaje') || modalConfirmar.querySelector('p');
-                    const btnAceptar = modalConfirmar.querySelector('#btnAceptarEliminar') || modalConfirmar.querySelector('.btn-danger');
-
-                    if (esOnePiece) {
-                        if (tituloModal) tituloModal.textContent = "🌊 ¿Arrojar al mar?";
-                        if (mensajeModal) mensajeModal.textContent = "¿Estás seguro de que deseas eliminar este movimiento?";
-                        if (btnAceptar) btnAceptar.textContent = "Sí, Arrojar";
-                    } else {
-                        if (tituloModal) tituloModal.textContent = "🗑️ Eliminar Registro";
-                        if (mensajeModal) mensajeModal.textContent = "¿Estás seguro de que deseas eliminar este gasto de la lista?";
-                        if (btnAceptar) btnAceptar.textContent = "Sí, Eliminar";
-                    }
-
                     modalConfirmar.style.display = 'flex';
                 }
             };
@@ -388,14 +553,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 actualizarDashboard();
 
-                const selectTema = document.getElementById('selectorTema') || document.querySelector('select');
-                const valTema = selectTema ? selectTema.value.toLowerCase() : '';
-                const esOnePiece = valTema.includes('piece') || document.body.getAttribute('data-tema') === 'one-piece';
-
+                const { esOnePiece } = obtenerEstadoVisual();
                 if (esOnePiece) {
                     mostrarAlertaCustom("El gasto ha sido arrojado al mar exitosamente.", "🌊 Gasto Eliminado");
                 } else {
-                    mostrarAlertaCustom("El gasto ha sido eliminado correctamente del sistema.", "Registro Eliminado");
+                    mostrarAlertaCustom("El gasto ha sido eliminado correctamente del sistema.", "🗑️ Registro Eliminado");
                 }
             }
         };
@@ -411,48 +573,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    const renderizarGraficos = (egresosPorCat, ingresos, egresos) => {
-        if (typeof Chart === 'undefined') return;
-
-        const modo = document.body.getAttribute('data-modo') || 'light';
-        const colorTexto = modo === 'dark' ? '#ffffff' : '#0f172a';
-
-        const canvasDona = document.getElementById('chartDona') || document.querySelectorAll('canvas')[0];
-        if (canvasDona) {
-            if (chartDona) chartDona.destroy();
-            const cats = Object.keys(egresosPorCat);
-            const vals = Object.values(egresosPorCat);
-
-            chartDona = new Chart(canvasDona, {
-                type: 'doughnut',
-                data: {
-                    labels: cats.length ? cats : ['Sin egresos'],
-                    datasets: [{
-                        data: vals.length ? vals : [1],
-                        backgroundColor: ['#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899']
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: colorTexto } } } }
-            });
-        }
-
-        const canvasBarras = document.getElementById('chartBarras') || document.querySelectorAll('canvas')[1];
-        if (canvasBarras) {
-            if (chartBarras) chartBarras.destroy();
-            chartBarras = new Chart(canvasBarras, {
-                type: 'bar',
-                data: {
-                    labels: ['Ingresos', 'Egresos'],
-                    datasets: [{ label: 'Monto ($)', data: [ingresos, egresos], backgroundColor: ['#10b981', '#ef4444'] }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: colorTexto } } },
-                    scales: { x: { ticks: { color: colorTexto } }, y: { ticks: { color: colorTexto } } }
-                }
-            });
-        }
+    const restaurarBotonGuardar = (btnSubmit) => {
+        if (!btnSubmit) return;
+        const { esOnePiece } = obtenerEstadoVisual();
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = esOnePiece
+            ? `<span class="txt-onepiece">⚔️ Guardar en la Bitácora</span><span class="txt-normal">💾 Guardar Registro</span>`
+            : `<span class="txt-onepiece">⚔️ Guardar en la Bitácora</span><span class="txt-normal">💾 Guardar Registro</span>`;
     };
 
     const procesarGuardadoGasto = async (e) => {
@@ -464,19 +591,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const formGasto = document.getElementById('formGasto') || document.querySelector('form');
         if (!formGasto) return;
 
-        const tipoEl = document.getElementById('tipo') || formGasto.querySelector('select');
+        const tipoEl = document.getElementById('tipoMovimiento') || document.getElementById('tipo') || formGasto.querySelector('select');
         const montoEl = document.getElementById('monto') || formGasto.querySelector('input[type="number"]');
-        // Captura precisa de la categoría: busca por ID 'categoria', o por select con name/id, o por el input específico
-        const catEl = document.getElementById('categoria') || formGasto.querySelector('select[name="categoria"]') || document.getElementById('regCategoria');
+        const catEl = document.getElementById('categoria') || formGasto.querySelector('select[name="categoria"]');
         const fechaEl = document.getElementById('fecha') || formGasto.querySelector('input[type="date"]');
         const descEl = document.getElementById('descripcion') || document.getElementById('desc');
-        const fileEl = formGasto.querySelector('input[type="file"]') || document.getElementById('comprobante');
-        const btnSubmit = formGasto.querySelector('button');
+        const fileEl = document.getElementById('comprobanteFile') || formGasto.querySelector('input[type="file"]');
+        const btnSubmit = document.getElementById('btnGuardar') || formGasto.querySelector('button[type="submit"]');
 
         const valMonto = montoEl ? parseFloat(montoEl.value) : 0;
         const valFecha = fechaEl ? fechaEl.value.trim() : '';
-        // Obtener el valor de la categoría seleccionada o ingresada sin tomar el input incorrecto
-        const valCat = catEl ? catEl.value.trim() : 'Varios';
+        const valCat = catEl ? catEl.value.trim() : '';
         const valDesc = descEl ? descEl.value.trim() : '';
 
         if (isNaN(valMonto) || valMonto <= 0) {
@@ -488,7 +613,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         if (!valCat) {
-            mostrarAlertaCustom("Por favor ingresá la categoría del movimiento.");
+            mostrarAlertaCustom("Por favor seleccioná una categoría para el movimiento.");
             return;
         }
         if (!valDesc) {
@@ -510,7 +635,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 [tipoEl ? tipoEl.value.toLowerCase() : 'egreso', Number(valMonto), valCat, valFecha, valDesc, urlTicket, idGastoEnEdicion]
             );
             idGastoEnEdicion = null;
-            if (btnSubmit) btnSubmit.textContent = "Registrar Movimiento";
             mostrarAlertaCustom("¡Movimiento actualizado correctamente!", "💾 Guardado Exitoso");
         } else {
             window.AppDB.db.run(
@@ -522,10 +646,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         await window.AppDB.save();
 
-        if (btnSubmit) {
-            btnSubmit.disabled = false;
-            btnSubmit.textContent = "Registrar Movimiento";
-        }
+        restaurarBotonGuardar(btnSubmit);
 
         if (montoEl) montoEl.value = '';
         if (descEl) descEl.value = '';
@@ -540,35 +661,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         formEl.onsubmit = procesarGuardadoGasto;
     }
 
-    const btnAbandonar = document.getElementById('btnAbandonar') || document.getElementById('btnLogout') || document.querySelector('.btn-danger');
-    const modalLogout = document.getElementById('modalLogoutCustom');
-    const btnAceptarLogout = document.getElementById('btnAceptarLogoutCustom');
-    const btnCancelarLogout = document.getElementById('btnCancelarLogoutCustom');
+    // Gestión de Cierre de Sesión
+    const btnAbandonar = document.getElementById('btnLogout') || document.getElementById('btnAbandonar');
+    const modalLogout = document.getElementById('modalCerrarSesion') || document.getElementById('modalLogoutCustom');
+    const btnAceptarLogout = document.getElementById('btnAceptarLogout') || document.getElementById('btnAceptarLogoutCustom');
+    const btnCancelarLogout = document.getElementById('btnCancelarLogout') || document.getElementById('btnCancelarLogoutCustom');
 
     if (btnAbandonar) {
         btnAbandonar.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
 
-            const selectTema = document.getElementById('selectorTema') || document.querySelectorAll('select')[0];
-            const textoTemaSelect = selectTema ? selectTema.options[selectTema.selectedIndex].text.toLowerCase() : '';
-            const temaAttr = document.body.getAttribute('data-tema') || '';
-            const esOnePiece = textoTemaSelect.includes('piece') || temaAttr === 'one-piece';
-
             if (modalLogout) {
-                const tituloModal = modalLogout.querySelector('.modal-titulo');
-                const mensajeModal = modalLogout.querySelector('.modal-mensaje');
-
-                if (esOnePiece) {
-                    if (tituloModal) tituloModal.textContent = "⚓ ¡Atención Capitán!";
-                    if (mensajeModal) mensajeModal.textContent = "¿Estás seguro de que deseas abandonar el barco y cerrar sesión?";
-                    if (btnAceptarLogout) btnAceptarLogout.textContent = "Sí, Abandonar";
-                } else {
-                    if (tituloModal) tituloModal.textContent = "🔐 Cerrar Sesión";
-                    if (mensajeModal) mensajeModal.textContent = "¿Estás seguro de que deseas salir del sistema?";
-                    if (btnAceptarLogout) btnAceptarLogout.textContent = "Sí, Salir";
-                }
-
                 modalLogout.style.display = 'flex';
             } else if (confirm("¿Deseas cerrar sesión?")) {
                 localStorage.removeItem('sgg_usuario_activo');
@@ -664,7 +768,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                             modalAjustes.style.display = 'none';
                         }
 
-                        mostrarAlertaCustom("¡Base de datos cargada correctamente manteniendo el aislamiento de cuentas!", "🏴‍☠️ Base de Datos Cargada");
+                        const { esOnePiece } = obtenerEstadoVisual();
+                        mostrarAlertaCustom(
+                            esOnePiece
+                                ? "¡Bitácora SQLite cargada correctamente manteniendo el aislamiento de cuentas!"
+                                : "¡Base de datos cargada correctamente manteniendo el aislamiento de cuentas!",
+                            esOnePiece ? "🏴‍☠️ Base de Datos Cargada" : "💾 Base de Datos Cargada"
+                        );
                     }
                 };
 
